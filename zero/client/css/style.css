@@ -1,23 +1,35 @@
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ==========================================
+   RESET Y CONFIGURACIÓN GENERAL
+   ================================          */
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
 
 body {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  background: #0b0c10;
+  background: #050608;
   color: #c5c6c7;
   overflow: hidden;
+  height: 100vh;
+  width: 100vw;
 }
 
 #game-container { 
   display: flex; 
   height: 100vh; 
   position: relative; 
+  overflow: hidden;
 }
 
-/* Panel lateral adaptable para móviles */
+/* ==========================================
+   PANEL LATERAL (ESTILO TÁCTICO / HUD)
+   ================================          */
 #sidebar {
-  width: 320px;
-  background: #1f2833;
+  width: 340px;
+  background: linear-gradient(135deg, #0b0c10 0%, #1f2833 100%);
   padding: 20px;
   border-right: 2px solid #45a29e;
   display: flex;
@@ -26,153 +38,224 @@ body {
   overflow-y: auto;
   height: 100%;
   z-index: 100;
-  transition: transform 0.3s ease-in-out;
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.7);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Estado oculto y transiciones del panel lateral */
 .sidebar.collapsed {
   transform: translateX(-100%);
 }
 
-.sidebar {
-  transition: transform 0.3s ease-in-out;
-}
-
-/* Estilos para ocultar/mostrar el menú en celulares */
+/* Adaptabilidad móvil del menú */
 @media (max-width: 768px) {
   #sidebar {
     position: absolute;
     left: 0;
     top: 0;
+    width: 85%;
+    max-width: 320px;
     transform: translateX(-100%);
+    background: rgba(11, 12, 16, 0.95);
+    backdrop-filter: blur(12px);
   }
   #sidebar.active {
     transform: translateX(0);
   }
   #toggleMenuBtn {
-    display: block !important;
+    display: flex !important;
   }
 }
 
-/* Botón flotante para abrir/cerrar el menú en móviles (Integrado con tus propiedades exactas) */
+/* Botón flotante del menú móvil */
 #toggleMenuBtn {
   display: none;
   position: fixed;
-  top: 10px;
-  left: 10px;
+  top: 15px;
+  left: 15px;
   z-index: 1001;
-  width: auto;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #0f172a;
-  color: #38bdf8;
-  border: 1px solid #38bdf8;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #66fcf1;
+  border: 1px solid #45a29e;
   font-weight: bold;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  font-size: 14px;
+  box-shadow: 0 4px 20px rgba(0, 255, 204, 0.2);
   cursor: pointer;
+  backdrop-filter: blur(5px);
 }
 
+/* ==========================================
+   MAPA DE JUEGO (ESTILO MUNDO ABIERTO)
+   ================================          */
 #map-container {
   flex: 1;
   position: relative;
   overflow: auto;
-  background: #0b0c10;
+  background-color: #0b0c10;
+  /* Patrón sutil en el fondo para dar textura de mapa táctico */
+  background-image: 
+    radial-gradient(circle at 50% 50%, #1f2833 0%, #0b0c10 100%),
+    linear-gradient(rgba(69, 162, 158, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(69, 162, 158, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px;
 }
 
 #map {
   display: grid;
-  gap: 2px;
-  padding: 20px;
+  gap: 4px;
+  padding: 30px;
+  background: rgba(11, 12, 16, 0.6);
+  border-radius: 16px;
+  border: 1px solid rgba(69, 162, 158, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
 }
 
+/* ==========================================
+   NODOS / TERRITORIOS (CASTILLOS Y TORRES)
+   ================================          */
 .territory {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
+  position: relative;
+  user-select: none;
 }
 
 .territory:hover { 
-  transform: scale(1.15); 
-  z-index: 10; 
-  filter: brightness(1.2); 
+  transform: scale(1.2); 
+  z-index: 50; 
+  filter: brightness(1.3); 
+  box-shadow: 0 0 15px rgba(102, 252, 241, 0.6);
 }
 
-.territory.empty { background: #1f2833; }
+.territory.empty { 
+  background: #12161f; 
+  border: 1px solid #222d3d;
+}
 
 .territory.owned { 
-  background: #66fcf1; 
-  color: #0b0c10; 
-  border: 2px solid #45a29e; 
-  box-shadow: 0 0 8px rgba(102, 252, 241, 0.4); 
+  background: linear-gradient(135deg, #1f4068 0%, #162447 100%);
+  color: #66fcf1; 
+  border: 2px solid #66fcf1; 
+  box-shadow: inset 0 0 8px rgba(102, 252, 241, 0.5), 0 0 10px rgba(102, 252, 241, 0.3); 
 }
 
-.territory.enemy { background: #c3073f; color: #fff; }
-.territory.neutral { background: #4e4e50; color: #ccc; }
+.territory.enemy { 
+  background: linear-gradient(135deg, #58181f 0%, #300d11 100%); 
+  color: #ff6b6b; 
+  border: 2px solid #c3073f;
+  box-shadow: inset 0 0 8px rgba(195, 7, 63, 0.5);
+}
 
+.territory.neutral { 
+  background: linear-gradient(135deg, #2c353d 0%, #1a2129 100%); 
+  color: #a0aab2; 
+  border: 1px solid #4e4e50;
+}
+
+/* Efecto especial si el territorio está seleccionado directamente en JS */
+.territory.selected-node {
+  border: 2px solid #ffffff !important;
+  transform: scale(1.25);
+  z-index: 60;
+  box-shadow: 0 0 20px #66fcf1, inset 0 0 10px #ffffff;
+}
+
+/* ==========================================
+   ESTADÍSTICAS Y PANELES INTERNOS
+   ================================          */
 .stat-box {
-  background: #0b0c10;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #45a29e;
+  background: rgba(11, 12, 16, 0.7);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(69, 162, 158, 0.4);
+  backdrop-filter: blur(5px);
 }
 
 .stat-box h3 { 
   color: #66fcf1; 
-  margin-bottom: 10px; 
-  font-size: 16px; 
+  margin-bottom: 12px; 
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .stat-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #1f2833;
-  font-size: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(31, 40, 51, 0.8);
+  font-size: 13px;
 }
 
+.stat-row span:last-child {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ==========================================
+   BOTONES INTERACTIVOS DE ACCIÓN
+   ================================          */
 button {
   width: 100%;
   padding: 12px;
   border: none;
-  border-radius: 6px;
-  background: #45a29e;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #45a29e 0%, #227975 100%);
   color: #0b0c10;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(69, 162, 158, 0.3);
 }
 
 button:hover { 
-  background: #66fcf1; 
-  box-shadow: 0 0 10px rgba(102, 252, 241, 0.5); 
+  background: linear-gradient(135deg, #66fcf1 0%, #45a29e 100%);
+  box-shadow: 0 0 20px rgba(102, 252, 241, 0.6);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 button:disabled { 
-  background: #383838; 
-  color: #777; 
+  background: #1a2129; 
+  color: #4e4e50; 
   cursor: not-allowed; 
-  box-shadow: none; 
+  box-shadow: none;
+  border: 1px solid #222d3d;
 }
 
 #selected-territory {
-  padding: 15px;
-  background: #0b0c10;
-  border-radius: 8px;
+  padding: 16px;
+  background: rgba(11, 12, 16, 0.85);
+  border-radius: 10px;
   border: 1px solid #c3073f;
   display: none;
+  box-shadow: 0 5px 20px rgba(195, 7, 63, 0.2);
 }
 
+/* ==========================================
+   SISTEMA DE NOTIFICACIONES FLOTANTES
+   ================================          */
 #notifications {
   position: fixed;
   top: 20px;
@@ -181,27 +264,35 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  pointer-events: none;
 }
 
 .notification {
-  background: #45a29e;
+  background: rgba(69, 162, 158, 0.95);
   color: #0b0c10;
-  padding: 12px 18px;
-  border-radius: 6px;
+  padding: 12px 20px;
+  border-radius: 8px;
   font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  animation: slideIn 0.3s ease;
+  font-size: 13px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: auto;
+  border: 1px solid #66fcf1;
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
+  from { transform: translateX(120%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* ==========================================
+   PANTALLA DE ACCESO (LOGIN)
+   ================================          */
 #login-screen {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: #0b0c10;
+  background: radial-gradient(circle at center, #1f2833 0%, #050608 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,28 +300,32 @@ button:disabled {
 }
 
 .login-box {
-  background: #1f2833;
+  background: rgba(11, 12, 16, 0.9);
   padding: 40px;
-  border-radius: 12px;
+  border-radius: 16px;
   text-align: center;
   border: 2px solid #45a29e;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-  width: 350px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.9), 0 0 30px rgba(69, 162, 158, 0.2);
+  width: 90%;
+  max-width: 380px;
+  backdrop-filter: blur(10px);
 }
 
 .login-box input {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   margin: 15px 0;
   border: 2px solid #45a29e;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #0b0c10;
   color: #fff;
   font-size: 16px;
   text-align: center;
+  transition: all 0.3s;
 }
 
 .login-box input:focus { 
   outline: none; 
-  border-color: #66fcf1; 
+  border-color: #66fcf1;
+  box-shadow: 0 0 15px rgba(102, 252, 241, 0.4);
 }
