@@ -1,26 +1,20 @@
 {
   "name": "zero-server",
   "version": "1.0.0",
-  "description": "Servidor backend de estrategia multijugador en tiempo real para ZERO",
+  "description": "Servidor backend de estrategia multijugador para ZERO",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest"
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.5",
-    "redis": "^4.6.13",
-    "socket.io": "^4.7.5",
-    "uuid": "^9.0.1"
+    "mongodb": "^6.5.0",
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
     "nodemon": "^3.1.0"
   }
 }
