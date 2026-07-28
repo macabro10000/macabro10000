@@ -33,9 +33,10 @@ async function connectDB() {
 
 connectDB();
 
-// Configuración de Redis con manejo de errores robusto
+// Configuración de Redis con manejo de errores robusto (No rompe si falla)
 const redisClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
-redisClient.on('error', (err) => console.error('⚠️ Error en Redis:', err));
+redisClient.on('error', (err) => console.error('⚠️ Aviso de Redis:', err.message));
+
 (async () => {
   try {
     await redisClient.connect();
@@ -88,9 +89,8 @@ class Territory {
 
 const players = new Map();
 const territories = new Map();
-const MAP_SIZE = 50; // Optimizado para fluidez inicial (configurable)
+const MAP_SIZE = 50; 
 
-// Generar mapa de territorios de forma eficiente
 function generateMap() {
   let id = 0;
   for (let x = 0; x < MAP_SIZE; x++) {
@@ -105,7 +105,7 @@ function generateMap() {
 generateMap();
 
 // ============================================
-// SISTEMA DE BATALLAS (Optimizado)
+// SISTEMA DE BATALLAS
 // ============================================
 
 function resolveBattle(attacker, defenderTerritory) {
@@ -151,7 +151,6 @@ function calculateIncome(player) {
   return goldPerSecond;
 }
 
-// Loop de economía eficiente cada 5 segundos
 setInterval(() => {
   players.forEach(player => {
     const income = calculateIncome(player);
@@ -178,7 +177,6 @@ io.on('connection', (socket) => {
   
   socket.on('player:register', async (data) => {
     const username = data?.username || `Lord_${Math.floor(Math.random() * 1000)}`;
-    
     const startX = Math.floor(Math.random() * MAP_SIZE);
     const startY = Math.floor(Math.random() * MAP_SIZE);
     
@@ -197,7 +195,6 @@ io.on('connection', (socket) => {
     
     players.set(socket.id, player);
 
-    // Guardar o actualizar registro en MongoDB
     if (playersCollection) {
       try {
         await playersCollection.updateOne(
@@ -224,7 +221,6 @@ io.on('connection', (socket) => {
       mapSize: MAP_SIZE
     });
     
-    // Enviar visión cercana (Optimización de red)
     const visibleTerritories = [];
     const viewRange = 12;
     for (let dx = -viewRange; dx <= viewRange; dx++) {
@@ -239,9 +235,8 @@ io.on('connection', (socket) => {
     }
     
     socket.emit('map:visible', visibleTerritories);
-    console.log(`👤 Jugador registrado: ${username} en (${startX}, ${startY})`);
   });
-  
+
   socket.on('territory:attack', (data) => {
     const { territoryId } = data;
     const player = players.get(socket.id);
@@ -297,7 +292,7 @@ io.on('connection', (socket) => {
     
     io.emit('territory:updated', territory);
   });
-  
+
   socket.on('troops:recruit', (data) => {
     const amount = parseInt(data?.amount) || 10;
     const player = players.get(socket.id);
@@ -316,7 +311,7 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Oro insuficiente' });
     }
   });
-  
+
   socket.on('building:build', (data) => {
     const { territoryId, buildingType } = data;
     const player = players.get(socket.id);
@@ -355,7 +350,7 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Oro insuficiente' });
     }
   });
-  
+
   socket.on('leaderboard:get', () => {
     const leaderboard = Array.from(players.values())
       .map(p => ({
@@ -375,10 +370,6 @@ io.on('connection', (socket) => {
     players.delete(socket.id);
   });
 });
-
-// ============================================
-// API REST
-// ============================================
 
 app.get('/api/status', (req, res) => {
   res.json({
