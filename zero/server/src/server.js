@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { createClient } = require('redis');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,13 +11,35 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// ============================================
+// CONFIGURACIÓN DE MONGODB Y REDIS
+// ============================================
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/zero_db';
+let db, playersCollection, territoriesCollection;
+
+async function connectDB() {
+  try {
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+    db = client.db('zero_db');
+    playersCollection = db.collection('players');
+    territoriesCollection = db.collection('territories');
+    console.log('✅ Conectado a MongoDB exitosamente');
+  } catch (err) {
+    console.error('❌ Error conectando a MongoDB:', err);
+  }
+}
+
+connectDB();
+
 // Configuración de Redis con manejo de errores robusto
 const redisClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
 redisClient.on('error', (err) => console.error('⚠️ Error en Redis:', err));
 (async () => {
   try {
     await redisClient.connect();
-    console.log('✅ Conectado a Redis exitosamente');
+    console.log('✅ Conectado al caché de Redis exitosamente');
   } catch (e) {
     console.log('⚠️ Funcionando sin Redis (memoria local activa)');
   }
@@ -153,7 +176,7 @@ setInterval(() => {
 io.on('connection', (socket) => {
   console.log(`🔌 Jugador conectado: ${socket.id}`);
   
-  socket.on('player:register', (data) => {
+  socket.on('player:register', async (data) => {
     const username = data?.username || `Lord_${Math.floor(Math.random() * 1000)}`;
     
     const startX = Math.floor(Math.random() * MAP_SIZE);
@@ -173,6 +196,19 @@ io.on('connection', (socket) => {
     }
     
     players.set(socket.id, player);
+
+    // Guardar o actualizar registro en MongoDB
+    if (playersCollection) {
+      try {
+        await playersCollection.updateOne(
+          { username },
+          { $set: { lastLogin: new Date(), gold: player.gold, troops: player.troops } },
+          { upsert: true }
+        );
+      } catch (dbErr) {
+        console.error('⚠️ Error guardando jugador en MongoDB:', dbErr);
+      }
+    }
     
     socket.emit('player:init', {
       player: {
