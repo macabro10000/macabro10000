@@ -1,1 +1,236 @@
 
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0b0c10;
+  color: #c5c6c7;
+  overflow: hidden;
+}
+
+#game-container { 
+  display: flex; 
+  height: 100vh; 
+  position: relative; 
+}
+
+/* Panel lateral adaptable para móviles */
+#sidebar {
+  width: 320px;
+  background: #1f2833;
+  padding: 20px;
+  border-right: 2px solid #45a29e;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  height: 100%;
+  z-index: 100;
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Estado oculto y transiciones del panel lateral */
+.sidebar.collapsed {
+  transform: translateX(-100%);
+}
+
+.sidebar {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Estilos para ocultar/mostrar el menú en celulares */
+@media (max-width: 768px) {
+  #sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+  }
+  #sidebar.active {
+    transform: translateX(0);
+  }
+  #toggleMenuBtn {
+    display: block !important;
+  }
+}
+
+/* Botón flotante para abrir/cerrar el menú en móviles (Integrado con tus propiedades exactas) */
+#toggleMenuBtn {
+  display: none;
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+  width: auto;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+
+#map-container {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: #0b0c10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#map {
+  display: grid;
+  gap: 2px;
+  padding: 20px;
+}
+
+.territory {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.territory:hover { 
+  transform: scale(1.15); 
+  z-index: 10; 
+  filter: brightness(1.2); 
+}
+
+.territory.empty { background: #1f2833; }
+
+.territory.owned { 
+  background: #66fcf1; 
+  color: #0b0c10; 
+  border: 2px solid #45a29e; 
+  box-shadow: 0 0 8px rgba(102, 252, 241, 0.4); 
+}
+
+.territory.enemy { background: #c3073f; color: #fff; }
+.territory.neutral { background: #4e4e50; color: #ccc; }
+
+.stat-box {
+  background: #0b0c10;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #45a29e;
+}
+
+.stat-box h3 { 
+  color: #66fcf1; 
+  margin-bottom: 10px; 
+  font-size: 16px; 
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #1f2833;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  background: #45a29e;
+  color: #0b0c10;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+button:hover { 
+  background: #66fcf1; 
+  box-shadow: 0 0 10px rgba(102, 252, 241, 0.5); 
+}
+
+button:disabled { 
+  background: #383838; 
+  color: #777; 
+  cursor: not-allowed; 
+  box-shadow: none; 
+}
+
+#selected-territory {
+  padding: 15px;
+  background: #0b0c10;
+  border-radius: 8px;
+  border: 1px solid #c3073f;
+  display: none;
+}
+
+#notifications {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notification {
+  background: #45a29e;
+  color: #0b0c10;
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+#login-screen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #0b0c10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.login-box {
+  background: #1f2833;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #45a29e;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  width: 350px;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin: 15px 0;
+  border: 2px solid #45a29e;
+  border-radius: 6px;
+  background: #0b0c10;
+  color: #fff;
+  font-size: 16px;
+  text-align: center;
+}
+
+.login-box input:focus { 
+  outline: none; 
+  border-color: #66fcf1; 
+}
