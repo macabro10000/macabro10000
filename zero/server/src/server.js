@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const { createClient } = require('redis');
 const { MongoClient } = require('mongodb');
 
 const app = express();
@@ -12,7 +11,7 @@ const io = new Server(server, {
 });
 
 // ============================================
-// CONFIGURACIÓN DE MONGODB Y REDIS
+// CONFIGURACIÓN DE MONGODB
 // ============================================
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/zero_db';
@@ -32,19 +31,6 @@ async function connectDB() {
 }
 
 connectDB();
-
-// Configuración de Redis con manejo de errores robusto (No rompe si falla)
-const redisClient = createClient({ url: process.env.REDIS_URL || 'redis://localhost:6379' });
-redisClient.on('error', (err) => console.error('⚠️ Aviso de Redis:', err.message));
-
-(async () => {
-  try {
-    await redisClient.connect();
-    console.log('✅ Conectado al caché de Redis exitosamente');
-  } catch (e) {
-    console.log('⚠️ Funcionando sin Redis (memoria local activa)');
-  }
-})();
 
 // Middlewares
 app.use(cors());
