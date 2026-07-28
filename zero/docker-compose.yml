@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Servidor backend del juego
+  game-server:
+    build: ./server
+    container_name: zero-server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=zero_db
+      - DB_USER=zerouser
+      - DB_PASS=zeropass
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: zero-postgres
+    environment:
+      - POSTGRES_DB=zero_db
+      - POSTGRES_USER=zerouser
+      - POSTGRES_PASSWORD=zeropass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis para caché y estado en tiempo real
+  redis:
+    image: redis:7-alpine
+    container_name: zero-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Nginx como proxy inverso y servidor web del cliente
+  nginx:
+    image: nginx:alpine
+    container_name: zero-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./client:/usr/share/nginx/html
+    depends_on:
+      - game-server
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
