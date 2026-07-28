@@ -3,12 +3,22 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
+
+// ============================================
+// ARCHIVOS ESTÁTICOS (CLIENTE / HTML)
+// Explicación: Esta línea le indica a Express que busque 
+// en la carpeta 'client' (saliendo una carpeta con '../' 
+// si tu server.js está dentro de 'src' o 'server') para 
+// mostrar el juego en lugar de dar la pantalla blanca.
+// ============================================
+app.use(express.static(path.join(__dirname, '../../client')));
 
 // ============================================
 // CONFIGURACIÓN DE MONGODB
