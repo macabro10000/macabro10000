@@ -25,6 +25,13 @@ import {
   getTileSize
 } from "./terrain.js";
 
+import {
+  initTerritory,
+  setTerritoryTileSize,
+  drawTerritories,
+  findTerritoryAt
+} from "./territory.js";
+
 
 // ======================================================
 // VARIABLES
@@ -37,6 +44,8 @@ let animationFrame = null;
 
 let initialized = false;
 
+let eventsInitialized = false;
+
 
 // ======================================================
 // CONFIGURACIÓN
@@ -47,38 +56,42 @@ const rendererConfig = {
   background:
     "#17251a",
 
-  pixelRatio:
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    ),
-
   clearColor:
-    "#17251a"
+    "#17251a",
+
+  maxPixelRatio:
+    2,
+
+  minHeight:
+    300,
+
+  topOffset:
+    120
 
 };
 
 
 // ======================================================
-// INICIALIZAR
+// INICIALIZAR RENDERER
 // ======================================================
 
 export function initMapRenderer(
   canvasElement
 ) {
 
-  canvas =
-    canvasElement;
-
-  if (!canvas) {
+  if (!canvasElement) {
 
     console.error(
       "❌ MapRenderer: canvas no encontrado."
     );
 
-    return;
+    return false;
 
   }
+
+
+  canvas =
+    canvasElement;
 
 
   ctx =
@@ -93,14 +106,14 @@ export function initMapRenderer(
       "❌ MapRenderer: no se pudo obtener el contexto 2D."
     );
 
-    return;
+    return false;
 
   }
 
 
-  // ----------------------------------------------
+  // ==================================================
   // CÁMARA
-  // ----------------------------------------------
+  // ==================================================
 
   initCamera(
     canvas,
@@ -108,9 +121,9 @@ export function initMapRenderer(
   );
 
 
-  // ----------------------------------------------
+  // ==================================================
   // TERRENO
-  // ----------------------------------------------
+  // ==================================================
 
   initTerrain(
     canvas,
@@ -118,41 +131,88 @@ export function initMapRenderer(
   );
 
 
-  resizeCanvas();
+  // ==================================================
+  // CIUDADES
+  // ==================================================
 
+  initTerritory(
+    ctx
+  );
+
+
+  // ==================================================
+  // MARCAR COMO INICIALIZADO
+  // ==================================================
 
   initialized =
     true;
 
 
-  window.addEventListener(
-    "resize",
-    resizeCanvas
-  );
+  // ==================================================
+  // CONFIGURAR EVENTOS
+  // ==================================================
+
+  if (
+    !eventsInitialized
+  ) {
+
+    window.addEventListener(
+      "resize",
+      resizeCanvas
+    );
 
 
-  // ----------------------------------------------
-  // ZOOM
-  // ----------------------------------------------
-
-  canvas.addEventListener(
-    "wheel",
-    handleWheel,
-    {
-      passive: false
-    }
-  );
+    canvas.addEventListener(
+      "wheel",
+      handleWheel,
+      {
+        passive: false
+      }
+    );
 
 
-  // ----------------------------------------------
-  // INICIAR RENDER
-  // ----------------------------------------------
+    eventsInitialized =
+      true;
 
-  startRenderLoop();
+  }
+
+
+  // ==================================================
+  // AJUSTAR CANVAS
+  // ==================================================
+
+  resizeCanvas();
+
+
+  // ==================================================
+  // RENDER INICIAL
+  // ==================================================
+
+  requestRedraw();
 
 
   console.log(
-    "🗺️ MapRenderer inicializado."
+    "🗺️ MapRenderer inicializado correctamente."
+  );
+
+
+  return true;
+
+}
+
+
+// ======================================================
+// OBTENER PIXEL RATIO
+// ======================================================
+
+function getPixelRatio() {
+
+  return Math.min(
+
+    window.devicePixelRatio || 1,
+
+    rendererConfig.maxPixelRatio
+
   );
 
 }
@@ -164,13 +224,13 @@ export function initMapRenderer(
 
 function resizeCanvas() {
 
-  if (!canvas) {
+  if (!canvas || !ctx) {
     return;
   }
 
 
   const ratio =
-    rendererConfig.pixelRatio;
+    getPixelRatio();
 
 
   const width =
@@ -179,10 +239,15 @@ function resizeCanvas() {
 
   const height =
     Math.max(
-      300,
-      window.innerHeight - 120
+      rendererConfig.minHeight,
+      window.innerHeight -
+        rendererConfig.topOffset
     );
 
+
+  // ==================================================
+  // TAMAÑO REAL
+  // ==================================================
 
   canvas.width =
     Math.floor(
@@ -196,6 +261,10 @@ function resizeCanvas() {
     );
 
 
+  // ==================================================
+  // TAMAÑO VISUAL
+  // ==================================================
+
   canvas.style.width =
     `${width}px`;
 
@@ -203,6 +272,10 @@ function resizeCanvas() {
   canvas.style.height =
     `${height}px`;
 
+
+  // ==================================================
+  // ESCALA DE ALTA RESOLUCIÓN
+  // ==================================================
 
   ctx.setTransform(
     ratio,
@@ -214,60 +287,55 @@ function resizeCanvas() {
   );
 
 
-  // El canvas lógico vuelve a
-  // trabajar con las dimensiones CSS.
+  // ==================================================
+  // DIMENSIONES LÓGICAS
+  // ==================================================
 
   canvas.logicalWidth =
     width;
+
 
   canvas.logicalHeight =
     height;
 
 
-  draw();
+  requestRedraw();
 
 }
 
 
 // ======================================================
-// LOOP DE RENDERIZADO
+// SOLICITAR REDIBUJADO
 // ======================================================
 
-function startRenderLoop() {
+export function requestRedraw() {
 
   if (
-    animationFrame
+    animationFrame !== null
   ) {
 
-    cancelAnimationFrame(
-      animationFrame
-    );
-
-  }
-
-
-  function render() {
-
-    draw();
-
-    animationFrame =
-      requestAnimationFrame(
-        render
-      );
+    return;
 
   }
 
 
   animationFrame =
     requestAnimationFrame(
-      render
+      () => {
+
+        animationFrame =
+          null;
+
+        draw();
+
+      }
     );
 
 }
 
 
 // ======================================================
-// DIBUJAR MAPA
+// DIBUJAR MAPA COMPLETO
 // ======================================================
 
 export function draw() {
@@ -290,12 +358,16 @@ export function draw() {
 
   const height =
     canvas.logicalHeight ||
-    window.innerHeight - 120;
+    Math.max(
+      rendererConfig.minHeight,
+      window.innerHeight -
+        rendererConfig.topOffset
+    );
 
 
-  // ----------------------------------------------
-  // LIMPIAR
-  // ----------------------------------------------
+  // ==================================================
+  // LIMPIAR PANTALLA
+  // ==================================================
 
   ctx.clearRect(
     0,
@@ -317,9 +389,9 @@ export function draw() {
   );
 
 
-  // ----------------------------------------------
-  // DATOS
-  // ----------------------------------------------
+  // ==================================================
+  // OBTENER ESTADO
+  // ==================================================
 
   const territories =
     getTerritories();
@@ -337,9 +409,9 @@ export function draw() {
     getTileSize();
 
 
-  // ----------------------------------------------
+  // ==================================================
   // CONFIGURAR TERRENO
-  // ----------------------------------------------
+  // ==================================================
 
   setTerrainConfig(
     mapSize,
@@ -347,9 +419,18 @@ export function draw() {
   );
 
 
-  // ----------------------------------------------
-  // RENDERIZAR MUNDO
-  // ----------------------------------------------
+  // ==================================================
+  // CONFIGURAR CIUDADES
+  // ==================================================
+
+  setTerritoryTileSize(
+    tileSize
+  );
+
+
+  // ==================================================
+  // ENTRAR AL MUNDO
+  // ==================================================
 
   ctx.save();
 
@@ -366,9 +447,9 @@ export function draw() {
   );
 
 
-  // ----------------------------------------------
+  // ==================================================
   // TERRENO
-  // ----------------------------------------------
+  // ==================================================
 
   drawTerrain(
     territories,
@@ -376,12 +457,25 @@ export function draw() {
   );
 
 
-  // ----------------------------------------------
+  // ==================================================
+  // CIUDADES
+  // ==================================================
+
+  drawTerritories(
+    territories
+  );
+
+
+  // ==================================================
   // BORDE DEL MAPA
-  // ----------------------------------------------
+  // ==================================================
 
   drawMapBorder();
 
+
+  // ==================================================
+  // SALIR DEL MUNDO
+  // ==================================================
 
   ctx.restore();
 
@@ -389,7 +483,7 @@ export function draw() {
 
 
 // ======================================================
-// CENTRAR EN JUGADOR
+// CENTRAR EN EL JUGADOR
 // ======================================================
 
 export function centerOnPlayer() {
@@ -399,6 +493,10 @@ export function centerOnPlayer() {
 
 
   if (!player) {
+
+    console.warn(
+      "⚠️ No hay jugador para centrar la cámara."
+    );
 
     return;
 
@@ -412,7 +510,7 @@ export function centerOnPlayer() {
   );
 
 
-  draw();
+  requestRedraw();
 
 }
 
@@ -426,9 +524,7 @@ export function centerOnTerritory(
 ) {
 
   if (!territory) {
-
     return;
-
   }
 
 
@@ -439,7 +535,7 @@ export function centerOnTerritory(
   );
 
 
-  draw();
+  requestRedraw();
 
 }
 
@@ -451,6 +547,11 @@ export function centerOnTerritory(
 function handleWheel(
   event
 ) {
+
+  if (!canvas) {
+    return;
+  }
+
 
   event.preventDefault();
 
@@ -482,7 +583,7 @@ function handleWheel(
   );
 
 
-  draw();
+  requestRedraw();
 
 }
 
@@ -496,6 +597,11 @@ export function getTerritoryAt(
   screenY
 ) {
 
+  if (!canvas) {
+    return null;
+  }
+
+
   const world =
     screenToWorld(
       screenX,
@@ -507,81 +613,57 @@ export function getTerritoryAt(
     getTerritories();
 
 
-  const tile =
-    getTileSize();
-
-
-  const radius =
-    tile * 0.48;
-
-
-  let closest =
-    null;
-
-
-  let closestDistance =
-    Infinity;
-
-
-  for (
-    const territory
-    of territories
-  ) {
-
-    const centerX =
-      territory.x *
-      tile +
-      tile / 2;
-
-
-    const centerY =
-      territory.y *
-      tile +
-      tile / 2;
-
-
-    const dx =
-      world.x -
-      centerX;
-
-
-    const dy =
-      world.y -
-      centerY;
-
-
-    const distance =
-      Math.sqrt(
-        dx * dx +
-        dy * dy
-      );
-
-
-    if (
-      distance <
-        radius &&
-      distance <
-        closestDistance
-    ) {
-
-      closest =
-        territory;
-
-      closestDistance =
-        distance;
-
-    }
-
-  }
-
-
-  return closest;
+  return findTerritoryAt(
+    world.x,
+    world.y,
+    territories
+  );
 
 }
 
 
 // ======================================================
-// POSICIÓN DEL MOUSE EN EL MAPA
+// OBTENER TERRITORIO DESDE EVENTO
+// ======================================================
+
+export function getTerritoryFromEvent(
+  event
+) {
+
+  if (
+    !canvas ||
+    !event
+  ) {
+
+    return null;
+
+  }
+
+
+  const rect =
+    canvas.getBoundingClientRect();
+
+
+  const screenX =
+    event.clientX -
+    rect.left;
+
+
+  const screenY =
+    event.clientY -
+    rect.top;
+
+
+  return getTerritoryAt(
+    screenX,
+    screenY
+  );
+
+}
+
+
+// ======================================================
+// POSICIÓN DE PANTALLA → MUNDO
 // ======================================================
 
 export function screenPositionToWorld(
@@ -620,34 +702,73 @@ export function getContext() {
 
 
 // ======================================================
-// FORZAR REDIBUJADO
+// OBTENER CÁMARA
 // ======================================================
 
-export function refreshMap() {
+export function getRendererCamera() {
 
-  draw();
+  return getCamera();
 
 }
 
 
 // ======================================================
-// DETENER RENDERIZADO
+// FORZAR REDIBUJADO
+// ======================================================
+
+export function refreshMap() {
+
+  requestRedraw();
+
+}
+
+
+// ======================================================
+// DETENER RENDER
 // ======================================================
 
 export function stopRenderer() {
 
   if (
-    animationFrame
+    animationFrame !== null
   ) {
 
     cancelAnimationFrame(
       animationFrame
     );
 
+
     animationFrame =
       null;
 
   }
+
+}
+
+
+// ======================================================
+// REINICIAR RENDER
+// ======================================================
+
+export function restartRenderer() {
+
+  if (!initialized) {
+    return;
+  }
+
+
+  requestRedraw();
+
+}
+
+
+// ======================================================
+// ESTADO DEL RENDERER
+// ======================================================
+
+export function isInitialized() {
+
+  return initialized;
 
 }
 
@@ -662,11 +783,15 @@ export default {
 
   draw,
 
+  requestRedraw,
+
   centerOnPlayer,
 
   centerOnTerritory,
 
   getTerritoryAt,
+
+  getTerritoryFromEvent,
 
   screenPositionToWorld,
 
@@ -674,8 +799,14 @@ export default {
 
   getContext,
 
+  getRendererCamera,
+
   refreshMap,
 
-  stopRenderer
+  stopRenderer,
+
+  restartRenderer,
+
+  isInitialized
 
 };
