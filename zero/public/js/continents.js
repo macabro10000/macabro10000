@@ -1,35 +1,82 @@
 // ======================================================
 // ZERO - CONTINENTS.JS
-// Sistema de continentes del mapa
+// Sistema de datos y gestión de continentes
+//
+// RESPONSABILIDAD:
+// - Definir continentes
+// - Gestionar conexiones
+// - Consultar continentes
+// - Crear nuevos continentes
+// - Preparar expansión dinámica del mundo
+//
+// NO RESPONSABILIDAD:
+// - Canvas
+// - Renderizado
+// - Cámara
+// - CSS
+// - Efectos visuales
 // ======================================================
 
 
 // ======================================================
-// CONFIGURACIÓN
+// TIPOS DE CONTINENTE
 // ======================================================
 
-const CONTINENT_TYPES = {
+export const CONTINENT_TYPES = Object.freeze({
 
   NATURE: "nature",
-
   ICE: "ice",
-
   FIRE: "fire",
-
   DESERT: "desert"
 
-};
+});
+
+
+// ======================================================
+// CONFIGURACIÓN GENERAL
+// ======================================================
+
+const CONFIG = Object.freeze({
+
+  defaultRadiusX: 16,
+
+  defaultRadiusY: 14,
+
+  minRadius: 6,
+
+  maxRadius: 30,
+
+  defaultPosition: {
+    x: 50,
+    y: 50
+  },
+
+  expansion: {
+
+    minDistance: 28,
+
+    maxAttempts: 80,
+
+    radiusX: 16,
+
+    radiusY: 14
+
+  }
+
+});
 
 
 // ======================================================
 // CONTINENTES INICIALES
 // ======================================================
+//
+// IMPORTANTE:
+// Estos son datos del mundo.
+// La parte visual se maneja en terrain.js.
+//
+// ======================================================
 
 const continents = [
-
-  // ====================================================
-  // CONTINENTE VERDE
-  // ====================================================
 
   {
     id: "nature",
@@ -52,14 +99,12 @@ const continents = [
 
     active: true,
 
-    unlocked: true
+    unlocked: true,
+
+    expansionLevel: 1
 
   },
 
-
-  // ====================================================
-  // CONTINENTE DE HIELO
-  // ====================================================
 
   {
     id: "ice",
@@ -82,14 +127,12 @@ const continents = [
 
     active: true,
 
-    unlocked: true
+    unlocked: true,
+
+    expansionLevel: 1
 
   },
 
-
-  // ====================================================
-  // CONTINENTE DE FUEGO
-  // ====================================================
 
   {
     id: "fire",
@@ -112,14 +155,12 @@ const continents = [
 
     active: true,
 
-    unlocked: true
+    unlocked: true,
+
+    expansionLevel: 1
 
   },
 
-
-  // ====================================================
-  // CONTINENTE DESÉRTICO
-  // ====================================================
 
   {
     id: "desert",
@@ -142,7 +183,9 @@ const continents = [
 
     active: true,
 
-    unlocked: true
+    unlocked: true,
+
+    expansionLevel: 1
 
   }
 
@@ -150,7 +193,7 @@ const continents = [
 
 
 // ======================================================
-// CONEXIONES ENTRE CONTINENTES
+// CONEXIONES INICIALES
 // ======================================================
 
 const connections = [
@@ -158,14 +201,11 @@ const connections = [
   {
     id: "nature-ice",
 
-    from:
-      "nature",
+    from: "nature",
 
-    to:
-      "ice",
+    to: "ice",
 
-    type:
-      "road",
+    type: "road",
 
     active: true
 
@@ -174,14 +214,11 @@ const connections = [
   {
     id: "nature-fire",
 
-    from:
-      "nature",
+    from: "nature",
 
-    to:
-      "fire",
+    to: "fire",
 
-    type:
-      "road",
+    type: "road",
 
     active: true
 
@@ -190,14 +227,11 @@ const connections = [
   {
     id: "ice-desert",
 
-    from:
-      "ice",
+    from: "ice",
 
-    to:
-      "desert",
+    to: "desert",
 
-    type:
-      "road",
+    type: "road",
 
     active: true
 
@@ -206,14 +240,11 @@ const connections = [
   {
     id: "fire-desert",
 
-    from:
-      "fire",
+    from: "fire",
 
-    to:
-      "desert",
+    to: "desert",
 
-    type:
-      "road",
+    type: "road",
 
     active: true
 
@@ -223,16 +254,81 @@ const connections = [
 
 
 // ======================================================
-// ID DE NUEVO CONTINENTE
+// CONTADORES INTERNOS
 // ======================================================
 
 let generatedContinentId = 5;
 
+let generatedSeed = 5000;
+
 
 // ======================================================
-// COPIAR CONTINENTE
-// Evita exponer directamente el objeto interno.
+// UTILIDADES INTERNAS
 // ======================================================
+
+function toId(value) {
+
+  if (
+    value === undefined ||
+    value === null
+  ) {
+
+    return null;
+
+  }
+
+  const id =
+    String(value)
+      .trim();
+
+  return id || null;
+
+}
+
+
+// ------------------------------------------------------
+// NÚMERO SEGURO
+// ------------------------------------------------------
+
+function toFiniteNumber(
+  value,
+  fallback
+) {
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : fallback;
+
+}
+
+
+// ------------------------------------------------------
+// LIMITAR VALOR
+// ------------------------------------------------------
+
+function clamp(
+  value,
+  min,
+  max
+) {
+
+  return Math.max(
+    min,
+    Math.min(
+      max,
+      value
+    )
+  );
+
+}
+
+
+// ------------------------------------------------------
+// COPIA SEGURA
+// ------------------------------------------------------
 
 function cloneContinent(
   continent
@@ -245,17 +341,15 @@ function cloneContinent(
   }
 
   return {
-
     ...continent
-
   };
 
 }
 
 
-// ======================================================
-// COPIAR CONEXIÓN
-// ======================================================
+// ------------------------------------------------------
+// COPIA DE CONEXIÓN
+// ------------------------------------------------------
 
 function cloneConnection(
   connection
@@ -268,10 +362,74 @@ function cloneConnection(
   }
 
   return {
-
     ...connection
-
   };
+
+}
+
+
+// ======================================================
+// GENERAR SEMILLA DETERMINISTA
+// ======================================================
+
+function generateSeed() {
+
+  generatedSeed += 7919;
+
+  return generatedSeed;
+
+}
+
+
+// ======================================================
+// GENERAR ID DE CONTINENTE
+// ======================================================
+
+function generateContinentId() {
+
+  let id;
+
+  do {
+
+    id =
+      `continent-${generatedContinentId++}`;
+
+  } while (
+    hasContinent(id)
+  );
+
+  return id;
+
+}
+
+
+// ======================================================
+// CREAR ID DE CONEXIÓN
+// ======================================================
+//
+// Las conexiones son bidireccionales.
+//
+// nature-ice
+// ice-nature
+//
+// representan la misma conexión.
+//
+// ======================================================
+
+function createConnectionId(
+  from,
+  to
+) {
+
+  const ids = [
+
+    String(from),
+
+    String(to)
+
+  ].sort();
+
+  return `${ids[0]}-${ids[1]}`;
 
 }
 
@@ -283,10 +441,12 @@ function cloneConnection(
 export function getContinents() {
 
   return continents
+
     .filter(
       continent =>
         continent.active !== false
     )
+
     .map(
       cloneContinent
     );
@@ -295,8 +455,8 @@ export function getContinents() {
 
 
 // ======================================================
-// OBTENER TODOS
-// Incluye continentes inactivos.
+// OBTENER TODOS LOS CONTINENTES
+// INCLUYE INACTIVOS
 // ======================================================
 
 export function getAllContinents() {
@@ -309,17 +469,38 @@ export function getAllContinents() {
 
 
 // ======================================================
-// BUSCAR CONTINENTE POR ID
+// OBTENER CONTINENTES DESBLOQUEADOS
+// ======================================================
+
+export function getUnlockedContinents() {
+
+  return continents
+
+    .filter(
+      continent =>
+        continent.active !== false &&
+        continent.unlocked === true
+    )
+
+    .map(
+      cloneContinent
+    );
+
+}
+
+
+// ======================================================
+// BUSCAR POR ID
 // ======================================================
 
 export function getContinentById(
   id
 ) {
 
-  if (
-    id === undefined ||
-    id === null
-  ) {
+  const normalizedId =
+    toId(id);
+
+  if (!normalizedId) {
 
     return null;
 
@@ -329,9 +510,8 @@ export function getContinentById(
     continents.find(
       item =>
         item.id ===
-        String(id)
+        normalizedId
     );
-
 
   return cloneContinent(
     continent
@@ -341,19 +521,31 @@ export function getContinentById(
 
 
 // ======================================================
-// BUSCAR CONTINENTE POR TIPO
+// BUSCAR POR TIPO
 // ======================================================
 
 export function getContinentsByType(
   type
 ) {
 
+  const normalizedType =
+    toId(type);
+
+  if (!normalizedType) {
+
+    return [];
+
+  }
+
   return continents
+
     .filter(
       continent =>
-        continent.type === type &&
+        continent.type ===
+          normalizedType &&
         continent.active !== false
     )
+
     .map(
       cloneContinent
     );
@@ -375,7 +567,6 @@ export function getContinentAt(
 
   const posY =
     Number(y);
-
 
   if (
     !Number.isFinite(posX) ||
@@ -401,12 +592,26 @@ export function getContinentAt(
     }
 
 
+    const radiusX =
+      Math.max(
+        CONFIG.minRadius,
+        continent.radiusX
+      );
+
+
+    const radiusY =
+      Math.max(
+        CONFIG.minRadius,
+        continent.radiusY
+      );
+
+
     const dx =
       (
         posX -
         continent.x
       ) /
-      continent.radiusX;
+      radiusX;
 
 
     const dy =
@@ -414,7 +619,7 @@ export function getContinentAt(
         posY -
         continent.y
       ) /
-      continent.radiusY;
+      radiusY;
 
 
     const distance =
@@ -489,10 +694,12 @@ export function getContinentPosition(
 export function getConnections() {
 
   return connections
+
     .filter(
       connection =>
         connection.active !== false
     )
+
     .map(
       cloneConnection
     );
@@ -501,16 +708,79 @@ export function getConnections() {
 
 
 // ======================================================
-// OBTENER CONEXIONES RESUELTAS
+// OBTENER TODAS LAS CONEXIONES
+// ======================================================
+
+export function getAllConnections() {
+
+  return connections.map(
+    cloneConnection
+  );
+
+}
+
+
+// ======================================================
+// OBTENER CONEXIONES DE UN CONTINENTE
+// ======================================================
+
+export function getConnectionsFor(
+  continentId
+) {
+
+  const id =
+    toId(continentId);
+
+  if (!id) {
+
+    return [];
+
+  }
+
+
+  return connections
+
+    .filter(
+      connection =>
+        connection.active !== false &&
+        (
+          connection.from === id ||
+          connection.to === id
+        )
+    )
+
+    .map(
+      cloneConnection
+    );
+
+}
+
+
+// ======================================================
+// CONEXIONES RESUELTAS
+// ======================================================
+//
+// Devuelve:
+//
+// {
+//   id,
+//   type,
+//   from: continent,
+//   to: continent
+// }
+//
+// Esto resulta muy útil para terrain.js.
 // ======================================================
 
 export function getResolvedConnections() {
 
   return connections
+
     .filter(
       connection =>
         connection.active !== false
     )
+
     .map(
       connection => {
 
@@ -520,6 +790,7 @@ export function getResolvedConnections() {
               continent.id ===
               connection.from
           );
+
 
         const to =
           continents.find(
@@ -569,6 +840,7 @@ export function getResolvedConnections() {
 
       }
     )
+
     .filter(
       Boolean
     );
@@ -577,17 +849,26 @@ export function getResolvedConnections() {
 
 
 // ======================================================
-// COMPROBAR SI EXISTE
+// COMPROBAR SI EXISTE CONTINENTE
 // ======================================================
 
 export function hasContinent(
   id
 ) {
 
+  const normalizedId =
+    toId(id);
+
+  if (!normalizedId) {
+
+    return false;
+
+  }
+
   return continents.some(
     continent =>
       continent.id ===
-      String(id)
+      normalizedId
   );
 
 }
@@ -608,47 +889,177 @@ export function getContinentCount() {
 
 
 // ======================================================
-// CONTAR CONTINENTES DESBLOQUEADOS
+// CONTAR DESBLOQUEADOS
 // ======================================================
 
 export function getUnlockedContinentCount() {
 
   return continents.filter(
     continent =>
-      continent.unlocked !== false &&
-      continent.active !== false
+      continent.active !== false &&
+      continent.unlocked === true
   ).length;
 
 }
 
 
 // ======================================================
-// AGREGAR CONTINENTE
-// Preparado para expansión dinámica.
+// VALIDAR POSICIÓN
 // ======================================================
 
-export function addContinent(
-  data
+function isValidPosition(
+  x,
+  y,
+  radiusX,
+  radiusY
 ) {
 
   if (
-    !data
+    !Number.isFinite(x) ||
+    !Number.isFinite(y)
   ) {
 
-    return null;
+    return false;
 
   }
 
 
-  const id =
-    data.id ||
-    `continent-${generatedContinentId++}`;
+  if (
+    x < 0 ||
+    y < 0
+  ) {
+
+    return false;
+
+  }
+
+
+  return (
+    radiusX > 0 &&
+    radiusY > 0
+  );
+
+}
+
+
+// ======================================================
+// COMPROBAR SUPERPOSICIÓN
+// ======================================================
+
+export function isPositionAvailable(
+  x,
+  y,
+  radiusX =
+    CONFIG.defaultRadiusX,
+  radiusY =
+    CONFIG.defaultRadiusY,
+  minimumDistance =
+    CONFIG.expansion.minDistance
+) {
+
+  const posX =
+    Number(x);
+
+  const posY =
+    Number(y);
+
+  const rx =
+    Number(radiusX);
+
+  const ry =
+    Number(radiusY);
+
+  const minDistance =
+    Number(minimumDistance);
 
 
   if (
-    hasContinent(
-      id
+    !isValidPosition(
+      posX,
+      posY,
+      rx,
+      ry
     )
+  ) {
+
+    return false;
+
+  }
+
+
+  for (
+    const continent
+    of continents
+  ) {
+
+    if (
+      continent.active === false
+    ) {
+
+      continue;
+
+    }
+
+
+    const dx =
+      posX -
+      continent.x;
+
+    const dy =
+      posY -
+      continent.y;
+
+
+    const distance =
+      Math.sqrt(
+        dx * dx +
+        dy * dy
+      );
+
+
+    const requiredDistance =
+      Math.max(
+        minDistance,
+        rx +
+        ry
+      );
+
+
+    if (
+      distance <
+      requiredDistance
+    ) {
+
+      return false;
+
+    }
+
+  }
+
+
+  return true;
+
+}
+
+
+// ======================================================
+// AGREGAR CONTINENTE
+// ======================================================
+
+export function addContinent(
+  data = {}
+) {
+
+  const requestedId =
+    toId(data.id);
+
+  const id =
+    requestedId ||
+    generateContinentId();
+
+
+  if (
+    hasContinent(id)
   ) {
 
     console.warn(
@@ -661,10 +1072,64 @@ export function addContinent(
   }
 
 
+  const x =
+    toFiniteNumber(
+      data.x,
+      CONFIG.defaultPosition.x
+    );
+
+
+  const y =
+    toFiniteNumber(
+      data.y,
+      CONFIG.defaultPosition.y
+    );
+
+
+  const radiusX =
+    clamp(
+      toFiniteNumber(
+        data.radiusX,
+        CONFIG.defaultRadiusX
+      ),
+      CONFIG.minRadius,
+      CONFIG.maxRadius
+    );
+
+
+  const radiusY =
+    clamp(
+      toFiniteNumber(
+        data.radiusY,
+        CONFIG.defaultRadiusY
+      ),
+      CONFIG.minRadius,
+      CONFIG.maxRadius
+    );
+
+
+  if (
+    !isValidPosition(
+      x,
+      y,
+      radiusX,
+      radiusY
+    )
+  ) {
+
+    console.warn(
+      "⚠️ Posición inválida para continente:",
+      id
+    );
+
+    return null;
+
+  }
+
+
   const continent = {
 
-    id:
-      String(id),
+    id,
 
     type:
       data.type ||
@@ -674,49 +1139,37 @@ export function addContinent(
       data.name ||
       "Nuevo Continente",
 
-    x:
-      Number.isFinite(
-        Number(data.x)
-      )
-        ? Number(data.x)
-        : 50,
+    x,
 
-    y:
-      Number.isFinite(
-        Number(data.y)
-      )
-        ? Number(data.y)
-        : 50,
+    y,
 
-    radiusX:
-      Number.isFinite(
-        Number(data.radiusX)
-      )
-        ? Number(data.radiusX)
-        : 16,
+    radiusX,
 
-    radiusY:
-      Number.isFinite(
-        Number(data.radiusY)
-      )
-        ? Number(data.radiusY)
-        : 14,
+    radiusY,
 
     seed:
       Number.isFinite(
         Number(data.seed)
       )
         ? Number(data.seed)
-        : Math.floor(
-            Math.random() *
-            999999
-          ),
+        : generateSeed(),
 
     active:
       data.active !== false,
 
     unlocked:
-      data.unlocked !== false
+      data.unlocked === true,
+
+    expansionLevel:
+      Math.max(
+        1,
+        Math.floor(
+          toFiniteNumber(
+            data.expansionLevel,
+            1
+          )
+        )
+      )
 
   };
 
@@ -740,6 +1193,169 @@ export function addContinent(
 
 
 // ======================================================
+// CREAR CONTINENTE EN UNA POSICIÓN LIBRE
+// ======================================================
+//
+// Esta función será importante más adelante.
+//
+// Cuando el mundo se quede sin espacio,
+// podremos solicitar:
+//
+// generateExpansionContinent()
+//
+// y este módulo buscará automáticamente
+// una posición disponible.
+// ======================================================
+
+export function generateExpansionContinent(
+  options = {}
+) {
+
+  const radiusX =
+    clamp(
+      toFiniteNumber(
+        options.radiusX,
+        CONFIG.expansion.radiusX
+      ),
+      CONFIG.minRadius,
+      CONFIG.maxRadius
+    );
+
+
+  const radiusY =
+    clamp(
+      toFiniteNumber(
+        options.radiusY,
+        CONFIG.expansion.radiusY
+      ),
+      CONFIG.minRadius,
+      CONFIG.maxRadius
+    );
+
+
+  const minX =
+    toFiniteNumber(
+      options.minX,
+      8
+    );
+
+
+  const maxX =
+    toFiniteNumber(
+      options.maxX,
+      92
+    );
+
+
+  const minY =
+    toFiniteNumber(
+      options.minY,
+      8
+    );
+
+
+  const maxY =
+    toFiniteNumber(
+      options.maxY,
+      92
+    );
+
+
+  const attempts =
+    Math.max(
+      1,
+      Math.floor(
+        toFiniteNumber(
+          options.maxAttempts,
+          CONFIG.expansion.maxAttempts
+        )
+      )
+    );
+
+
+  const type =
+    options.type ||
+    CONTINENT_TYPES.NATURE;
+
+
+  for (
+    let attempt = 0;
+    attempt < attempts;
+    attempt++
+  ) {
+
+    const x =
+      minX +
+      Math.random() *
+      (
+        maxX -
+        minX
+      );
+
+
+    const y =
+      minY +
+      Math.random() *
+      (
+        maxY -
+        minY
+      );
+
+
+    if (
+      !isPositionAvailable(
+        x,
+        y,
+        radiusX,
+        radiusY,
+        CONFIG.expansion.minDistance
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    return addContinent({
+
+      type,
+
+      name:
+        options.name ||
+        "Nuevo Continente",
+
+      x,
+
+      y,
+
+      radiusX,
+
+      radiusY,
+
+      unlocked:
+        options.unlocked === true,
+
+      expansionLevel:
+        options.expansionLevel ||
+        1
+
+    });
+
+  }
+
+
+  console.warn(
+    "⚠️ No se encontró espacio para generar un nuevo continente."
+  );
+
+
+  return null;
+
+}
+
+
+// ======================================================
 // ACTIVAR CONTINENTE
 // ======================================================
 
@@ -747,11 +1363,15 @@ export function activateContinent(
   id
 ) {
 
+  const normalizedId =
+    toId(id);
+
+
   const continent =
     continents.find(
       item =>
         item.id ===
-        String(id)
+        normalizedId
     );
 
 
@@ -779,11 +1399,15 @@ export function deactivateContinent(
   id
 ) {
 
+  const normalizedId =
+    toId(id);
+
+
   const continent =
     continents.find(
       item =>
         item.id ===
-        String(id)
+        normalizedId
     );
 
 
@@ -811,11 +1435,15 @@ export function unlockContinent(
   id
 ) {
 
+  const normalizedId =
+    toId(id);
+
+
   const continent =
     continents.find(
       item =>
         item.id ===
-        String(id)
+        normalizedId
     );
 
 
@@ -836,6 +1464,42 @@ export function unlockContinent(
 
 
 // ======================================================
+// BLOQUEAR CONTINENTE
+// ======================================================
+
+export function lockContinent(
+  id
+) {
+
+  const normalizedId =
+    toId(id);
+
+
+  const continent =
+    continents.find(
+      item =>
+        item.id ===
+        normalizedId
+    );
+
+
+  if (!continent) {
+
+    return false;
+
+  }
+
+
+  continent.unlocked =
+    false;
+
+
+  return true;
+
+}
+
+
+// ======================================================
 // AGREGAR CONEXIÓN
 // ======================================================
 
@@ -846,13 +1510,15 @@ export function addConnection(
 ) {
 
   const from =
-    String(fromId);
+    toIdValue(fromId);
 
   const to =
-    String(toId);
+    toIdValue(toId);
 
 
   if (
+    !from ||
+    !to ||
     from === to
   ) {
 
@@ -871,17 +1537,18 @@ export function addConnection(
   }
 
 
+  const connectionId =
+    createConnectionId(
+      from,
+      to
+    );
+
+
   const exists =
     connections.some(
       connection =>
-        (
-          connection.from === from &&
-          connection.to === to
-        ) ||
-        (
-          connection.from === to &&
-          connection.to === from
-        )
+        connection.id ===
+        connectionId
     );
 
 
@@ -897,7 +1564,7 @@ export function addConnection(
   connections.push({
 
     id:
-      `${from}-${to}`,
+      connectionId,
 
     from,
 
@@ -919,6 +1586,19 @@ export function addConnection(
 
 
 // ======================================================
+// UTILIDAD PARA NORMALIZAR IDs
+// ======================================================
+
+function toIdValue(
+  value
+) {
+
+  return toId(value);
+
+}
+
+
+// ======================================================
 // ACTIVAR CONEXIÓN
 // ======================================================
 
@@ -926,11 +1606,21 @@ export function activateConnection(
   connectionId
 ) {
 
+  const id =
+    toId(connectionId);
+
+
+  if (!id) {
+
+    return false;
+
+  }
+
+
   const connection =
     connections.find(
       item =>
-        item.id ===
-        connectionId
+        item.id === id
     );
 
 
@@ -958,11 +1648,21 @@ export function deactivateConnection(
   connectionId
 ) {
 
+  const id =
+    toId(connectionId);
+
+
+  if (!id) {
+
+    return false;
+
+  }
+
+
   const connection =
     connections.find(
       item =>
-        item.id ===
-        connectionId
+        item.id === id
     );
 
 
@@ -1017,6 +1717,8 @@ export default {
 
   getAllContinents,
 
+  getUnlockedContinents,
+
   getContinentById,
 
   getContinentsByType,
@@ -1027,6 +1729,10 @@ export default {
 
   getConnections,
 
+  getAllConnections,
+
+  getConnectionsFor,
+
   getResolvedConnections,
 
   hasContinent,
@@ -1035,13 +1741,19 @@ export default {
 
   getUnlockedContinentCount,
 
+  isPositionAvailable,
+
   addContinent,
+
+  generateExpansionContinent,
 
   activateContinent,
 
   deactivateContinent,
 
   unlockContinent,
+
+  lockContinent,
 
   addConnection,
 
