@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forja Imperial</title>
+</head>
+<body>
+
+  <div id="game">
+    <h1>FORJA IMPERIAL</h1>
+    <p>Oro: <span id="gold">100</span></p>
+    <p>Tropas: <span id="troops">50</span></p>
+    <p>Nivel de ciudad: <span id="cityLevel">1</span></p>
+
+    <canvas id="map"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("map");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight * 0.7;
+
+    let gold = 100;
+    let troops = 50;
+    let cityLevel = 1;
+
+    function producir() {
+      gold += cityLevel;
+      troops += cityLevel;
+      
+      document.getElementById("gold").textContent = gold;
+      document.getElementById("troops").textContent = troops;
+    }
+
+    setInterval(producir, 1000);
+
+    function dibujarMapa() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#17251d";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const ciudades = [
+        { x: 150, y: 180, nivel: 1, tipo: "neutral" },
+        { x: 350, y: 120, nivel: 2, tipo: "neutral" },
+        { x: 550, y: 250, nivel: 3, tipo: "neutral" },
+        { x: 750, y: 150, nivel: 2, tipo: "neutral" },
+        { x: 450, y: 400, nivel: 1, tipo: "jugador" }
+      ];
+
+      ciudades.forEach(ciudad => {
+        ctx.beginPath();
+        ctx.arc(ciudad.x, ciudad.y, 35, 0, Math.PI * 2);
+
+        ctx.fillStyle =
+          ciudad.tipo === "jugador"
+            ? "#247cff"
+            : "#777";
+
+        ctx.fill();
+
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "16px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          "Nivel " + ciudad.nivel,
+          ciudad.x,
+          ciudad.y + 5
+        );
+      });
+    }
+
+    dibujarMapa();
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight * 0.7;
+      dibujarMapa();
+    });
+  </script>
+
+</body>
+</html>
