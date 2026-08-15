@@ -3,88 +3,207 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08120d">
+
   <title>Forja Imperial</title>
+
+  <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
 
   <div id="game">
-    <h1>FORJA IMPERIAL</h1>
-    <p>Oro: <span id="gold">100</span></p>
-    <p>Tropas: <span id="troops">50</span></p>
-    <p>Nivel de ciudad: <span id="cityLevel">1</span></p>
 
-    <canvas id="map"></canvas>
+    <!-- =========================================
+         CABECERA
+    ========================================== -->
+
+    <header class="topbar">
+
+      <div class="logo">
+        <span class="logo-icon">⚔</span>
+        <div>
+          <strong>FORJA IMPERIAL</strong>
+          <small>Conquista el mundo</small>
+        </div>
+      </div>
+
+      <div class="resources">
+
+        <div class="resource gold-resource">
+          <span>🪙</span>
+          <div>
+            <small>ORO</small>
+            <strong id="gold">500</strong>
+          </div>
+        </div>
+
+        <div class="resource troops-resource">
+          <span>⚔️</span>
+          <div>
+            <small>TROPAS</small>
+            <strong id="troops">100</strong>
+          </div>
+        </div>
+
+        <div class="resource level-resource">
+          <span>👑</span>
+          <div>
+            <small>NIVEL</small>
+            <strong id="cityLevel">1</strong>
+          </div>
+        </div>
+
+      </div>
+
+    </header>
+
+
+    <!-- =========================================
+         MAPA
+    ========================================== -->
+
+    <main class="map-container">
+
+      <canvas id="map"></canvas>
+
+      <div class="map-overlay">
+
+        <div class="map-status">
+          <span class="online-dot"></span>
+          <span>Servidor conectado</span>
+        </div>
+
+        <div class="map-controls">
+
+          <button id="zoomIn" type="button">
+            +
+          </button>
+
+          <button id="zoomOut" type="button">
+            −
+          </button>
+
+          <button id="centerMap" type="button">
+            ◎
+          </button>
+
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <!-- =========================================
+         PANEL DE CIUDAD
+    ========================================== -->
+
+    <aside id="cityPanel" class="city-panel hidden">
+
+      <button
+        id="closeCityPanel"
+        class="close-button"
+        type="button"
+      >
+        ×
+      </button>
+
+      <div class="city-header">
+
+        <div class="city-icon">
+          🏰
+        </div>
+
+        <div>
+          <h2 id="selectedCityName">
+            Ciudad
+          </h2>
+
+          <span id="selectedCityLevel">
+            Nivel 1
+          </span>
+        </div>
+
+      </div>
+
+      <div class="city-stats">
+
+        <div>
+          <small>TROPAS</small>
+          <strong id="selectedCityTroops">
+            0
+          </strong>
+        </div>
+
+        <div>
+          <small>PROPIETARIO</small>
+          <strong id="selectedCityOwner">
+            Neutral
+          </strong>
+        </div>
+
+      </div>
+
+      <button
+        id="attackButton"
+        class="attack-button"
+        type="button"
+      >
+        ⚔ ATACAR
+      </button>
+
+    </aside>
+
+
+    <!-- =========================================
+         BARRA INFERIOR
+    ========================================== -->
+
+    <nav class="bottom-menu">
+
+      <button type="button" class="menu-button active">
+        <span>🗺️</span>
+        <small>Mapa</small>
+      </button>
+
+      <button type="button" class="menu-button">
+        <span>🏰</span>
+        <small>Ciudad</small>
+      </button>
+
+      <button type="button" class="menu-button">
+        <span>⚔️</span>
+        <small>Ejército</small>
+      </button>
+
+      <button type="button" class="menu-button">
+        <span>👑</span>
+        <small>Imperio</small>
+      </button>
+
+      <button type="button" class="menu-button">
+        <span>☰</span>
+        <small>Menú</small>
+      </button>
+
+    </nav>
+
   </div>
 
-  <script>
-    const canvas = document.getElementById("map");
-    const ctx = canvas.getContext("2d");
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.7;
+  <!-- =========================================
+       SOCKET.IO
+       IMPORTANTE PARA EL TIEMPO REAL
+  ========================================== -->
 
-    let gold = 100;
-    let troops = 50;
-    let cityLevel = 1;
+  <script src="/socket.io/socket.io.js"></script>
 
-    function producir() {
-      gold += cityLevel;
-      troops += cityLevel;
-      
-      document.getElementById("gold").textContent = gold;
-      document.getElementById("troops").textContent = troops;
-    }
+  <!-- =========================================
+       LÓGICA DEL JUEGO
+  ========================================== -->
 
-    setInterval(producir, 1000);
-
-    function dibujarMapa() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = "#17251d";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const ciudades = [
-        { x: 150, y: 180, nivel: 1, tipo: "neutral" },
-        { x: 350, y: 120, nivel: 2, tipo: "neutral" },
-        { x: 550, y: 250, nivel: 3, tipo: "neutral" },
-        { x: 750, y: 150, nivel: 2, tipo: "neutral" },
-        { x: 450, y: 400, nivel: 1, tipo: "jugador" }
-      ];
-
-      ciudades.forEach(ciudad => {
-        ctx.beginPath();
-        ctx.arc(ciudad.x, ciudad.y, 35, 0, Math.PI * 2);
-
-        ctx.fillStyle =
-          ciudad.tipo === "jugador"
-            ? "#247cff"
-            : "#777";
-
-        ctx.fill();
-
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-
-        ctx.fillStyle = "#fff";
-        ctx.font = "16px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(
-          "Nivel " + ciudad.nivel,
-          ciudad.x,
-          ciudad.y + 5
-        );
-      });
-    }
-
-    dibujarMapa();
-
-    window.addEventListener("resize", () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight * 0.7;
-      dibujarMapa();
-    });
-  </script>
+  <script src="/js/game.js"></script>
 
 </body>
 </html>
