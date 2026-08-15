@@ -1,0 +1,64 @@
+name: ZERO - Sincronización del proyecto
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Crear estructura de ZERO
+        run: |
+          mkdir -p \
+            src \
+            src/core \
+            src/map \
+            src/render \
+            src/entities \
+            src/ui \
+            src/data \
+            public \
+            assets \
+            assets/images \
+            assets/audio \
+            config \
+            scripts
+
+      - name: Crear archivos base si no existen
+        run: |
+          touch src/core/.gitkeep
+          touch src/map/.gitkeep
+          touch src/render/.gitkeep
+          touch src/entities/.gitkeep
+          touch src/ui/.gitkeep
+          touch src/data/.gitkeep
+          touch public/.gitkeep
+          touch assets/images/.gitkeep
+          touch assets/audio/.gitkeep
+          touch config/.gitkeep
+          touch scripts/.gitkeep
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "ZERO Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "ZERO ya tiene la estructura actualizada."
+          else
+            git commit -m "chore: actualizar estructura de ZERO"
+            git push
+          fi
