@@ -11,35 +11,49 @@ let tileSize = 70;
 
 
 // ======================================================
-// CONFIGURACIÓN VISUAL
+// CONFIGURACIÓN
 // ======================================================
 
 const terrainConfig = {
 
-  // Colores base
-  grassTop: "#496f3d",
-  grassBottom: "#263d25",
-
-  // Variaciones del terreno
-  variation: [
-    "#456b3b",
+  grass: [
+    "#385b36",
+    "#3f6539",
+    "#476d3d",
+    "#345332",
     "#4b7340",
-    "#3f6437",
-    "#527946",
-    "#3a5d34"
+    "#3b6037"
   ],
 
-  // Caminos
-  roadColor:
-    "rgba(181, 155, 103, 0.35)",
+  darkGrass:
+    "rgba(20,45,25,0.20)",
 
-  roadWidth: 8,
+  lightGrass:
+    "rgba(170,200,120,0.08)",
 
-  // Líneas del mapa
-  borderColor:
-    "rgba(255,255,255,0.035)",
+  water:
+    "#244f63",
 
-  borderWidth: 1
+  waterLight:
+    "rgba(100,170,190,0.18)",
+
+  dirt:
+    "#765f3d",
+
+  dirtLight:
+    "rgba(190,160,105,0.18)",
+
+  road:
+    "rgba(183,153,94,0.55)",
+
+  roadShadow:
+    "rgba(30,25,15,0.22)",
+
+  border:
+    "rgba(255,255,255,0.025)",
+
+  mapBorder:
+    "rgba(220,190,120,0.55)"
 
 };
 
@@ -59,15 +73,25 @@ export function initTerrain(
   ctx =
     context;
 
+  if (!ctx || !canvas) {
+
+    console.error(
+      "❌ Terrain: canvas no encontrado."
+    );
+
+    return;
+
+  }
+
   console.log(
-    "🌿 Terreno inicializado."
+    "🌿 Motor de terreno inicializado."
   );
 
 }
 
 
 // ======================================================
-// CONFIGURAR MAPA
+// CONFIGURACIÓN DEL MAPA
 // ======================================================
 
 export function setTerrainConfig(
@@ -75,25 +99,31 @@ export function setTerrainConfig(
   tile
 ) {
 
+  const newSize =
+    Number(size);
+
+  const newTile =
+    Number(tile);
+
+
   if (
-    Number.isFinite(
-      Number(size)
-    )
+    Number.isFinite(newSize) &&
+    newSize > 0
   ) {
 
     mapSize =
-      Number(size);
+      newSize;
 
   }
 
+
   if (
-    Number.isFinite(
-      Number(tile)
-    )
+    Number.isFinite(newTile) &&
+    newTile > 0
   ) {
 
     tileSize =
-      Number(tile);
+      newTile;
 
   }
 
@@ -101,18 +131,20 @@ export function setTerrainConfig(
 
 
 // ======================================================
-// SEMILLA DETERMINISTA
+// RANDOM DETERMINISTA
 // ======================================================
 
 function seededRandom(
   x,
-  y
+  y,
+  seed = 0
 ) {
 
   const value =
     Math.sin(
       x * 12.9898 +
-      y * 78.233
+      y * 78.233 +
+      seed * 37.719
     ) *
     43758.5453;
 
@@ -125,36 +157,230 @@ function seededRandom(
 
 
 // ======================================================
-// OBTENER VARIACIÓN DEL TERRENO
+// HASH DEL TERRENO
 // ======================================================
 
-function getTerrainVariation(
+function terrainNoise(
   x,
   y
 ) {
 
-  const random =
+  const a =
     seededRandom(
       x,
-      y
+      y,
+      1
     );
 
-  const index =
-    Math.floor(
-      random *
-      terrainConfig.variation.length
+  const b =
+    seededRandom(
+      Math.floor(x / 3),
+      Math.floor(y / 3),
+      2
+    );
+
+  const c =
+    seededRandom(
+      Math.floor(x / 8),
+      Math.floor(y / 8),
+      3
     );
 
   return (
-    terrainConfig
-      .variation[index]
+    a * 0.55 +
+    b * 0.30 +
+    c * 0.15
   );
 
 }
 
 
 // ======================================================
-// DIBUJAR UNA CELDA
+// COLOR DEL TERRENO
+// ======================================================
+
+function getTerrainColor(
+  x,
+  y
+) {
+
+  const noise =
+    terrainNoise(
+      x,
+      y
+    );
+
+
+  const index =
+    Math.floor(
+      noise *
+      terrainConfig.grass.length
+    );
+
+
+  return (
+    terrainConfig.grass[
+      Math.min(
+        index,
+        terrainConfig.grass.length - 1
+      )
+    ]
+  );
+
+}
+
+
+// ======================================================
+// TIPO DE TERRENO
+// ======================================================
+
+function getTerrainType(
+  x,
+  y
+) {
+
+  const noise =
+    terrainNoise(
+      x + 500,
+      y + 800
+    );
+
+
+  // Pequeñas zonas de agua
+
+  if (
+    noise < 0.055
+  ) {
+
+    return "water";
+
+  }
+
+
+  // Zonas de tierra
+
+  if (
+    noise > 0.91
+  ) {
+
+    return "dirt";
+
+  }
+
+
+  return "grass";
+
+}
+
+
+// ======================================================
+// DIBUJAR AGUA
+// ======================================================
+
+function drawWater(
+  px,
+  py
+) {
+
+  ctx.fillStyle =
+    terrainConfig.water;
+
+  ctx.fillRect(
+    px,
+    py,
+    tileSize,
+    tileSize
+  );
+
+
+  const gradient =
+    ctx.createLinearGradient(
+      px,
+      py,
+      px + tileSize,
+      py + tileSize
+    );
+
+
+  gradient.addColorStop(
+    0,
+    terrainConfig.waterLight
+  );
+
+  gradient.addColorStop(
+    1,
+    "rgba(0,0,0,0.12)"
+  );
+
+
+  ctx.fillStyle =
+    gradient;
+
+  ctx.fillRect(
+    px,
+    py,
+    tileSize,
+    tileSize
+  );
+
+
+  // Ondas
+
+  ctx.strokeStyle =
+    "rgba(150,210,220,0.13)";
+
+  ctx.lineWidth =
+    1;
+
+
+  const waveY =
+    py +
+    tileSize * 0.35;
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    px + 8,
+    waveY
+  );
+
+  ctx.quadraticCurveTo(
+    px + tileSize / 2,
+    waveY - 3,
+    px + tileSize - 8,
+    waveY
+  );
+
+  ctx.stroke();
+
+
+  const waveY2 =
+    py +
+    tileSize * 0.68;
+
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    px + 15,
+    waveY2
+  );
+
+  ctx.quadraticCurveTo(
+    px + tileSize / 2,
+    waveY2 + 3,
+    px + tileSize - 10,
+    waveY2
+  );
+
+  ctx.stroke();
+
+}
+
+
+// ======================================================
+// DIBUJAR CELDA
 // ======================================================
 
 function drawTile(
@@ -169,9 +395,58 @@ function drawTile(
     y * tileSize;
 
 
-  // --------------------------------------------
-  // COLOR BASE
-  // --------------------------------------------
+  const type =
+    getTerrainType(
+      x,
+      y
+    );
+
+
+  // ==================================================
+  // AGUA
+  // ==================================================
+
+  if (
+    type === "water"
+  ) {
+
+    drawWater(
+      px,
+      py
+    );
+
+    return;
+
+  }
+
+
+  // ==================================================
+  // TERRENO BASE
+  // ==================================================
+
+  const baseColor =
+    type === "dirt"
+      ? terrainConfig.dirt
+      : getTerrainColor(
+          x,
+          y
+        );
+
+
+  ctx.fillStyle =
+    baseColor;
+
+  ctx.fillRect(
+    px,
+    py,
+    tileSize,
+    tileSize
+  );
+
+
+  // ==================================================
+  // SOMBRA / LUZ
+  // ==================================================
 
   const gradient =
     ctx.createLinearGradient(
@@ -184,19 +459,18 @@ function drawTile(
 
   gradient.addColorStop(
     0,
-    terrainConfig.grassTop
+    terrainConfig.lightGrass
   );
 
   gradient.addColorStop(
     1,
-    terrainConfig.grassBottom
+    terrainConfig.darkGrass
   );
 
 
   ctx.fillStyle =
     gradient;
 
-
   ctx.fillRect(
     px,
     py,
@@ -205,38 +479,45 @@ function drawTile(
   );
 
 
-  // --------------------------------------------
-  // VARIACIÓN
-  // --------------------------------------------
+  // ==================================================
+  // TIERRA
+  // ==================================================
 
-  ctx.fillStyle =
-    getTerrainVariation(
-      x,
-      y
+  if (
+    type === "dirt"
+  ) {
+
+    ctx.fillStyle =
+      terrainConfig.dirtLight;
+
+    ctx.fillRect(
+      px,
+      py,
+      tileSize,
+      tileSize
     );
 
-
-  ctx.globalAlpha =
-    0.12;
+  }
 
 
-  ctx.fillRect(
+  // ==================================================
+  // VEGETACIÓN
+  // ==================================================
+
+  drawVegetation(
+    x,
+    y,
     px,
     py,
-    tileSize,
-    tileSize
+    type
   );
 
 
-  ctx.globalAlpha =
-    1;
+  // ==================================================
+  // PIEDRAS
+  // ==================================================
 
-
-  // --------------------------------------------
-  // PEQUEÑOS DETALLES
-  // --------------------------------------------
-
-  drawGroundDetails(
+  drawRocks(
     x,
     y,
     px,
@@ -244,15 +525,15 @@ function drawTile(
   );
 
 
-  // --------------------------------------------
-  // BORDE DE CELDA
-  // --------------------------------------------
+  // ==================================================
+  // BORDE SUTIL
+  // ==================================================
 
   ctx.strokeStyle =
-    terrainConfig.borderColor;
+    terrainConfig.border;
 
   ctx.lineWidth =
-    terrainConfig.borderWidth;
+    1;
 
   ctx.strokeRect(
     px,
@@ -265,35 +546,49 @@ function drawTile(
 
 
 // ======================================================
-// DETALLES DEL SUELO
+// VEGETACIÓN
 // ======================================================
 
-function drawGroundDetails(
+function drawVegetation(
   x,
   y,
   px,
-  py
+  py,
+  type
 ) {
+
+  if (
+    type !== "grass"
+  ) {
+
+    return;
+
+  }
+
 
   const random =
     seededRandom(
       x + 1000,
-      y + 500
+      y + 500,
+      4
     );
 
 
-  // No llenar todo de detalles
   if (
-    random < 0.55
+    random < 0.42
   ) {
+
     return;
+
   }
 
 
   const count =
-    random > 0.8
+    random > 0.82
       ? 3
-      : 1;
+      : random > 0.65
+        ? 2
+        : 1;
 
 
   for (
@@ -304,44 +599,44 @@ function drawGroundDetails(
 
     const rx =
       seededRandom(
-        x + i * 7,
-        y + i * 13
+        x + i * 11,
+        y + i * 17,
+        5
       );
 
     const ry =
       seededRandom(
-        x + i * 17,
-        y + i * 5
+        x + i * 19,
+        y + i * 7,
+        6
       );
 
 
-    const detailX =
+    const treeX =
       px +
+      8 +
       rx *
-      tileSize;
+      (tileSize - 16);
 
 
-    const detailY =
+    const treeY =
       py +
+      10 +
       ry *
-      tileSize;
+      (tileSize - 20);
 
 
-    ctx.beginPath();
-
-    ctx.arc(
-      detailX,
-      detailY,
-      1.5,
-      0,
-      Math.PI * 2
+    drawTree(
+      treeX,
+      treeY,
+      0.65 +
+      seededRandom(
+        x,
+        y,
+        i
+      ) *
+      0.45
     );
-
-
-    ctx.fillStyle =
-      "rgba(210,230,170,0.25)";
-
-    ctx.fill();
 
   }
 
@@ -349,19 +644,170 @@ function drawGroundDetails(
 
 
 // ======================================================
-// DIBUJAR CAMINOS
+// ÁRBOL
 // ======================================================
 
-function drawRoads(
+function drawTree(
+  x,
+  y,
+  scale
+) {
+
+  const trunkWidth =
+    4 * scale;
+
+  const trunkHeight =
+    9 * scale;
+
+
+  ctx.fillStyle =
+    "#4d3726";
+
+
+  ctx.fillRect(
+    x -
+      trunkWidth / 2,
+    y,
+    trunkWidth,
+    trunkHeight
+  );
+
+
+  ctx.beginPath();
+
+  ctx.arc(
+    x,
+    y - 5 * scale,
+    9 * scale,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "#244b2b";
+
+  ctx.fill();
+
+
+  ctx.beginPath();
+
+  ctx.arc(
+    x - 5 * scale,
+    y - 2 * scale,
+    6 * scale,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "#315d34";
+
+  ctx.fill();
+
+
+  ctx.beginPath();
+
+  ctx.arc(
+    x + 5 * scale,
+    y - 2 * scale,
+    6 * scale,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "#3b6b3a";
+
+  ctx.fill();
+
+}
+
+
+// ======================================================
+// PIEDRAS
+// ======================================================
+
+function drawRocks(
+  x,
+  y,
+  px,
+  py
+) {
+
+  const random =
+    seededRandom(
+      x + 300,
+      y + 700,
+      8
+    );
+
+
+  if (
+    random < 0.72
+  ) {
+
+    return;
+
+  }
+
+
+  const rockX =
+    px +
+    seededRandom(
+      x,
+      y,
+      9
+    ) *
+    tileSize;
+
+
+  const rockY =
+    py +
+    seededRandom(
+      x,
+      y,
+      10
+    ) *
+    tileSize;
+
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    rockX,
+    rockY,
+    4,
+    2.5,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "rgba(120,125,110,0.65)";
+
+  ctx.fill();
+
+}
+
+
+// ======================================================
+// CAMINOS
+// ======================================================
+
+export function drawRoads(
   visibleTerritories
 ) {
 
   if (
+    !ctx ||
     !Array.isArray(
       visibleTerritories
     )
   ) {
+
     return;
+
   }
 
 
@@ -369,20 +815,59 @@ function drawRoads(
     new Set(
       visibleTerritories.map(
         territory =>
-          territory.id
+          Number(
+            territory.id
+          )
       )
     );
 
 
+  // Sombra del camino
+
   ctx.strokeStyle =
-    terrainConfig.roadColor;
+    terrainConfig.roadShadow;
 
   ctx.lineWidth =
-    terrainConfig.roadWidth;
+    13;
 
   ctx.lineCap =
     "round";
 
+
+  drawRoadLines(
+    visibleTerritories,
+    visible
+  );
+
+
+  // Camino principal
+
+  ctx.strokeStyle =
+    terrainConfig.road;
+
+  ctx.lineWidth =
+    8;
+
+  ctx.lineCap =
+    "round";
+
+
+  drawRoadLines(
+    visibleTerritories,
+    visible
+  );
+
+}
+
+
+// ======================================================
+// LÍNEAS DE CAMINOS
+// ======================================================
+
+function drawRoadLines(
+  visibleTerritories,
+  visible
+) {
 
   for (
     const territory
@@ -391,19 +876,23 @@ function drawRoads(
 
     const x =
       territory.x *
-        tileSize +
+      tileSize +
       tileSize / 2;
 
     const y =
       territory.y *
-        tileSize +
+      tileSize +
       tileSize / 2;
 
 
-    // Camino hacia la derecha
+    // ----------------------------------------------
+    // DERECHA
+    // ----------------------------------------------
 
     const rightId =
-      territory.id + 1;
+      Number(
+        territory.id
+      ) + 1;
 
 
     if (
@@ -431,10 +920,14 @@ function drawRoads(
     }
 
 
-    // Camino hacia abajo
+    // ----------------------------------------------
+    // ABAJO
+    // ----------------------------------------------
 
     const bottomId =
-      territory.id +
+      Number(
+        territory.id
+      ) +
       mapSize;
 
 
@@ -468,7 +961,7 @@ function drawRoads(
 
 
 // ======================================================
-// DIBUJAR TERRENO VISIBLE
+// TERRENO VISIBLE
 // ======================================================
 
 export function drawTerrain(
@@ -481,13 +974,11 @@ export function drawTerrain(
     !canvas ||
     !camera
   ) {
+
     return;
+
   }
 
-
-  // --------------------------------------------
-  // ZONA VISIBLE
-  // --------------------------------------------
 
   const startX =
     Math.max(
@@ -545,9 +1036,9 @@ export function drawTerrain(
     );
 
 
-  // --------------------------------------------
+  // ==================================================
   // TERRENO
-  // --------------------------------------------
+  // ==================================================
 
   for (
     let y = startY;
@@ -571,9 +1062,9 @@ export function drawTerrain(
   }
 
 
-  // --------------------------------------------
+  // ==================================================
   // CAMINOS
-  // --------------------------------------------
+  // ==================================================
 
   drawRoads(
     visibleTerritories
@@ -583,13 +1074,15 @@ export function drawTerrain(
 
 
 // ======================================================
-// DIBUJAR BORDE DEL MAPA
+// BORDE DEL MAPA
 // ======================================================
 
 export function drawMapBorder() {
 
   if (!ctx) {
+
     return;
+
   }
 
 
@@ -599,7 +1092,7 @@ export function drawMapBorder() {
 
 
   ctx.strokeStyle =
-    "rgba(220,190,120,0.45)";
+    terrainConfig.mapBorder;
 
   ctx.lineWidth =
     8;
@@ -616,7 +1109,7 @@ export function drawMapBorder() {
 
 
 // ======================================================
-// OBTENER TAMAÑO DEL TERRENO
+// TAMAÑO DE CELDA
 // ======================================================
 
 export function getTileSize() {
@@ -642,12 +1135,25 @@ export function setTileSize(
     !Number.isFinite(value) ||
     value <= 0
   ) {
+
     return;
+
   }
 
 
   tileSize =
     value;
+
+}
+
+
+// ======================================================
+// TAMAÑO DEL MAPA
+// ======================================================
+
+export function getMapSize() {
+
+  return mapSize;
 
 }
 
@@ -664,10 +1170,14 @@ export default {
 
   drawTerrain,
 
+  drawRoads,
+
   drawMapBorder,
 
   getTileSize,
 
-  setTileSize
+  setTileSize,
+
+  getMapSize
 
 };
