@@ -21,12 +21,12 @@ app.use(express.json());
 // ======================================================
 // ARCHIVOS DEL JUEGO
 // ======================================================
-
 app.use(
   express.static(
-    path.join(__dirname, "../client")
+    path.join(__dirname, "public")
   )
 );
+
 
 // ======================================================
 // MONGODB
