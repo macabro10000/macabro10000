@@ -1,6 +1,7 @@
 // ======================================================
 // ZERO - TERRAIN.JS
-// Motor visual del terreno
+// Terreno visual procedural
+// Océano + cuatro continentes + conexiones
 // ======================================================
 
 let ctx = null;
@@ -16,46 +17,130 @@ let tileSize = 70;
 
 const terrainConfig = {
 
-  grass: [
-    "#385b36",
-    "#3f6539",
-    "#476d3d",
-    "#345332",
-    "#4b7340",
-    "#3b6037"
-  ],
+  ocean: {
+    deep: "#071d2b",
+    mid: "#0b3447",
+    light: "#12506a"
+  },
 
-  darkGrass:
-    "rgba(20,45,25,0.20)",
+  continents: {
 
-  lightGrass:
-    "rgba(170,200,120,0.08)",
+    nature: {
+      name: "nature",
+      colors: [
+        "#244d2b",
+        "#316638",
+        "#3f7a42",
+        "#568b48",
+        "#6d9b50"
+      ]
+    },
 
-  water:
-    "#244f63",
+    ice: {
+      name: "ice",
+      colors: [
+        "#b9d7df",
+        "#d7e9ed",
+        "#eef7f8",
+        "#ffffff",
+        "#a7cbd5"
+      ]
+    },
 
-  waterLight:
-    "rgba(100,170,190,0.18)",
+    fire: {
+      name: "fire",
+      colors: [
+        "#3a1714",
+        "#572019",
+        "#7b2919",
+        "#a53b18",
+        "#d85b1c"
+      ]
+    },
 
-  dirt:
-    "#765f3d",
+    desert: {
+      name: "desert",
+      colors: [
+        "#8b6738",
+        "#a77b40",
+        "#c2934b",
+        "#d8ae63",
+        "#e5c47d"
+      ]
+    }
 
-  dirtLight:
-    "rgba(190,160,105,0.18)",
+  },
 
-  road:
-    "rgba(183,153,94,0.55)",
-
-  roadShadow:
-    "rgba(30,25,15,0.22)",
-
-  border:
-    "rgba(255,255,255,0.025)",
-
-  mapBorder:
-    "rgba(220,190,120,0.55)"
+  connection: {
+    color: "#8f7950",
+    edge: "#c0a66c",
+    width: 9
+  }
 
 };
+
+
+// ======================================================
+// CONTINENTES
+// ======================================================
+
+const continents = [
+
+  {
+    id: "nature",
+    type: "nature",
+
+    // Centro aproximado
+    x: 25,
+    y: 26,
+
+    // Radio aproximado
+    radiusX: 17,
+    radiusY: 14,
+
+    seed: 11
+  },
+
+  {
+    id: "ice",
+    type: "ice",
+
+    x: 72,
+    y: 23,
+
+    radiusX: 16,
+    radiusY: 13,
+
+    seed: 27
+  },
+
+  {
+    id: "fire",
+    type: "fire",
+
+    x: 25,
+    y: 73,
+
+    radiusX: 16,
+    radiusY: 14,
+
+    seed: 43
+  },
+
+  {
+    id: "desert",
+    type: "desert",
+
+    x: 72,
+    y: 72,
+
+    radiusX: 17,
+    radiusY: 14,
+
+    seed: 61
+  }
+
+];
 
 
 // ======================================================
@@ -73,25 +158,15 @@ export function initTerrain(
   ctx =
     context;
 
-  if (!ctx || !canvas) {
-
-    console.error(
-      "❌ Terrain: canvas no encontrado."
-    );
-
-    return;
-
-  }
-
   console.log(
-    "🌿 Motor de terreno inicializado."
+    "🌍 Terreno continental inicializado."
   );
 
 }
 
 
 // ======================================================
-// CONFIGURACIÓN DEL MAPA
+// CONFIGURAR MAPA
 // ======================================================
 
 export function setTerrainConfig(
@@ -131,7 +206,7 @@ export function setTerrainConfig(
 
 
 // ======================================================
-// RANDOM DETERMINISTA
+// SEMILLA
 // ======================================================
 
 function seededRandom(
@@ -157,593 +232,677 @@ function seededRandom(
 
 
 // ======================================================
-// HASH DEL TERRENO
+// RUIDO SUAVE
 // ======================================================
 
-function terrainNoise(
+function smoothNoise(
   x,
-  y
+  y,
+  seed
 ) {
 
-  const a =
+  const x0 =
+    Math.floor(x);
+
+  const y0 =
+    Math.floor(y);
+
+  const x1 =
+    x0 + 1;
+
+  const y1 =
+    y0 + 1;
+
+
+  const sx =
+    x - x0;
+
+  const sy =
+    y - y0;
+
+
+  const n00 =
     seededRandom(
-      x,
-      y,
-      1
+      x0,
+      y0,
+      seed
     );
 
-  const b =
+  const n10 =
     seededRandom(
-      Math.floor(x / 3),
-      Math.floor(y / 3),
-      2
+      x1,
+      y0,
+      seed
     );
 
-  const c =
+  const n01 =
     seededRandom(
-      Math.floor(x / 8),
-      Math.floor(y / 8),
-      3
+      x0,
+      y1,
+      seed
     );
+
+  const n11 =
+    seededRandom(
+      x1,
+      y1,
+      seed
+    );
+
+
+  const ix0 =
+    n00 +
+    (n10 - n00) *
+    sx;
+
+  const ix1 =
+    n01 +
+    (n11 - n01) *
+    sx;
+
 
   return (
-    a * 0.55 +
-    b * 0.30 +
-    c * 0.15
+    ix0 +
+    (ix1 - ix0) *
+    sy
   );
 
 }
 
 
 // ======================================================
-// COLOR DEL TERRENO
+// CONTINENTE QUE CONTIENE UN PUNTO
 // ======================================================
 
-function getTerrainColor(
+function getContinentAt(
   x,
   y
 ) {
 
-  const noise =
-    terrainNoise(
-      x,
-      y
-    );
-
-
-  const index =
-    Math.floor(
-      noise *
-      terrainConfig.grass.length
-    );
-
-
-  return (
-    terrainConfig.grass[
-      Math.min(
-        index,
-        terrainConfig.grass.length - 1
-      )
-    ]
-  );
-
-}
-
-
-// ======================================================
-// TIPO DE TERRENO
-// ======================================================
-
-function getTerrainType(
-  x,
-  y
-) {
-
-  const noise =
-    terrainNoise(
-      x + 500,
-      y + 800
-    );
-
-
-  // Pequeñas zonas de agua
-
-  if (
-    noise < 0.055
+  for (
+    const continent
+    of continents
   ) {
 
-    return "water";
+    const dx =
+      (
+        x -
+        continent.x
+      ) /
+      continent.radiusX;
+
+    const dy =
+      (
+        y -
+        continent.y
+      ) /
+      continent.radiusY;
+
+
+    const distance =
+      Math.sqrt(
+        dx * dx +
+        dy * dy
+      );
+
+
+    // ----------------------------------------------
+    // FORMA IRREGULAR
+    // ----------------------------------------------
+
+    const noise =
+      smoothNoise(
+        x * 0.35,
+        y * 0.35,
+        continent.seed
+      );
+
+
+    const deformation =
+      0.78 +
+      noise * 0.42;
+
+
+    if (
+      distance <
+      deformation
+    ) {
+
+      return continent;
+
+    }
 
   }
 
 
-  // Zonas de tierra
-
-  if (
-    noise > 0.91
-  ) {
-
-    return "dirt";
-
-  }
-
-
-  return "grass";
+  return null;
 
 }
 
 
 // ======================================================
-// DIBUJAR AGUA
+// DIBUJAR OCÉANO
 // ======================================================
 
-function drawWater(
-  px,
-  py
+function drawOcean(
+  width,
+  height
 ) {
-
-  ctx.fillStyle =
-    terrainConfig.water;
-
-  ctx.fillRect(
-    px,
-    py,
-    tileSize,
-    tileSize
-  );
-
 
   const gradient =
     ctx.createLinearGradient(
-      px,
-      py,
-      px + tileSize,
-      py + tileSize
+      0,
+      0,
+      width,
+      height
     );
 
 
   gradient.addColorStop(
     0,
-    terrainConfig.waterLight
+    terrainConfig.ocean.light
+  );
+
+  gradient.addColorStop(
+    0.45,
+    terrainConfig.ocean.mid
   );
 
   gradient.addColorStop(
     1,
-    "rgba(0,0,0,0.12)"
+    terrainConfig.ocean.deep
   );
 
 
   ctx.fillStyle =
     gradient;
 
+
   ctx.fillRect(
-    px,
-    py,
-    tileSize,
-    tileSize
+    0,
+    0,
+    width,
+    height
   );
-
-
-  // Ondas
-
-  ctx.strokeStyle =
-    "rgba(150,210,220,0.13)";
-
-  ctx.lineWidth =
-    1;
-
-
-  const waveY =
-    py +
-    tileSize * 0.35;
-
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-    px + 8,
-    waveY
-  );
-
-  ctx.quadraticCurveTo(
-    px + tileSize / 2,
-    waveY - 3,
-    px + tileSize - 8,
-    waveY
-  );
-
-  ctx.stroke();
-
-
-  const waveY2 =
-    py +
-    tileSize * 0.68;
-
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-    px + 15,
-    waveY2
-  );
-
-  ctx.quadraticCurveTo(
-    px + tileSize / 2,
-    waveY2 + 3,
-    px + tileSize - 10,
-    waveY2
-  );
-
-  ctx.stroke();
 
 }
 
 
 // ======================================================
-// DIBUJAR CELDA
+// DETALLES DEL OCÉANO
 // ======================================================
 
-function drawTile(
-  x,
-  y
+function drawOceanDetails(
+  startX,
+  startY,
+  endX,
+  endY
 ) {
 
-  const px =
-    x * tileSize;
-
-  const py =
-    y * tileSize;
+  ctx.save();
 
 
-  const type =
-    getTerrainType(
-      x,
-      y
-    );
-
-
-  // ==================================================
-  // AGUA
-  // ==================================================
-
-  if (
-    type === "water"
+  for (
+    let y = startY;
+    y <= endY;
+    y += 5
   ) {
 
-    drawWater(
-      px,
-      py
-    );
+    for (
+      let x = startX;
+      x <= endX;
+      x += 7
+    ) {
 
-    return;
+      const random =
+        seededRandom(
+          x,
+          y,
+          900
+        );
+
+
+      if (
+        random < 0.72
+      ) {
+
+        continue;
+
+      }
+
+
+      const px =
+        x *
+        tileSize;
+
+      const py =
+        y *
+        tileSize;
+
+
+      ctx.strokeStyle =
+        "rgba(130,210,225,0.09)";
+
+      ctx.lineWidth =
+        1;
+
+
+      ctx.beginPath();
+
+      ctx.moveTo(
+        px,
+        py
+      );
+
+      ctx.lineTo(
+        px + tileSize * 0.45,
+        py
+      );
+
+      ctx.stroke();
+
+    }
 
   }
 
 
-  // ==================================================
-  // TERRENO BASE
-  // ==================================================
+  ctx.restore();
 
-  const baseColor =
-    type === "dirt"
-      ? terrainConfig.dirt
-      : getTerrainColor(
+}
+
+
+// ======================================================
+// COLOR DEL CONTINENTE
+// ======================================================
+
+function getContinentColor(
+  continent,
+  x,
+  y
+) {
+
+  const biome =
+    terrainConfig
+      .continents[
+        continent.type
+      ];
+
+
+  const noise =
+    smoothNoise(
+      x * 0.22,
+      y * 0.22,
+      continent.seed
+    );
+
+
+  const index =
+    Math.min(
+      biome.colors.length - 1,
+      Math.floor(
+        noise *
+        biome.colors.length
+      )
+    );
+
+
+  return biome.colors[index];
+
+}
+
+
+// ======================================================
+// DIBUJAR CONTINENTE
+// ======================================================
+
+function drawContinent(
+  continent
+) {
+
+  const minX =
+    Math.max(
+      0,
+      Math.floor(
+        continent.x -
+        continent.radiusX -
+        2
+      )
+    );
+
+
+  const maxX =
+    Math.min(
+      mapSize - 1,
+      Math.ceil(
+        continent.x +
+        continent.radiusX +
+        2
+      )
+    );
+
+
+  const minY =
+    Math.max(
+      0,
+      Math.floor(
+        continent.y -
+        continent.radiusY -
+        2
+      )
+    );
+
+
+  const maxY =
+    Math.min(
+      mapSize - 1,
+      Math.ceil(
+        continent.y +
+        continent.radiusY +
+        2
+      )
+    );
+
+
+  for (
+    let y = minY;
+    y <= maxY;
+    y++
+  ) {
+
+    for (
+      let x = minX;
+      x <= maxX;
+      x++
+    ) {
+
+      const dx =
+        (
+          x -
+          continent.x
+        ) /
+        continent.radiusX;
+
+      const dy =
+        (
+          y -
+          continent.y
+        ) /
+        continent.radiusY;
+
+
+      const distance =
+        Math.sqrt(
+          dx * dx +
+          dy * dy
+        );
+
+
+      const noise =
+        smoothNoise(
+          x * 0.35,
+          y * 0.35,
+          continent.seed
+        );
+
+
+      const deformation =
+        0.78 +
+        noise * 0.42;
+
+
+      if (
+        distance >
+        deformation
+      ) {
+
+        continue;
+
+      }
+
+
+      const px =
+        x *
+        tileSize;
+
+      const py =
+        y *
+        tileSize;
+
+
+      ctx.fillStyle =
+        getContinentColor(
+          continent,
           x,
           y
         );
 
 
-  ctx.fillStyle =
-    baseColor;
+      ctx.fillRect(
+        px,
+        py,
+        tileSize + 1,
+        tileSize + 1
+      );
 
-  ctx.fillRect(
-    px,
-    py,
-    tileSize,
-    tileSize
-  );
-
-
-  // ==================================================
-  // SOMBRA / LUZ
-  // ==================================================
-
-  const gradient =
-    ctx.createLinearGradient(
-      px,
-      py,
-      px,
-      py + tileSize
-    );
-
-
-  gradient.addColorStop(
-    0,
-    terrainConfig.lightGrass
-  );
-
-  gradient.addColorStop(
-    1,
-    terrainConfig.darkGrass
-  );
-
-
-  ctx.fillStyle =
-    gradient;
-
-  ctx.fillRect(
-    px,
-    py,
-    tileSize,
-    tileSize
-  );
-
-
-  // ==================================================
-  // TIERRA
-  // ==================================================
-
-  if (
-    type === "dirt"
-  ) {
-
-    ctx.fillStyle =
-      terrainConfig.dirtLight;
-
-    ctx.fillRect(
-      px,
-      py,
-      tileSize,
-      tileSize
-    );
+    }
 
   }
-
-
-  // ==================================================
-  // VEGETACIÓN
-  // ==================================================
-
-  drawVegetation(
-    x,
-    y,
-    px,
-    py,
-    type
-  );
-
-
-  // ==================================================
-  // PIEDRAS
-  // ==================================================
-
-  drawRocks(
-    x,
-    y,
-    px,
-    py
-  );
-
-
-  // ==================================================
-  // BORDE SUTIL
-  // ==================================================
-
-  ctx.strokeStyle =
-    terrainConfig.border;
-
-  ctx.lineWidth =
-    1;
-
-  ctx.strokeRect(
-    px,
-    py,
-    tileSize,
-    tileSize
-  );
 
 }
 
 
 // ======================================================
-// VEGETACIÓN
+// BORDE DEL CONTINENTE
 // ======================================================
 
-function drawVegetation(
-  x,
-  y,
-  px,
-  py,
-  type
+function drawContinentEdges(
+  continent
 ) {
 
-  if (
-    type !== "grass"
-  ) {
-
-    return;
-
-  }
-
-
-  const random =
-    seededRandom(
-      x + 1000,
-      y + 500,
-      4
+  const minX =
+    Math.max(
+      0,
+      Math.floor(
+        continent.x -
+        continent.radiusX -
+        2
+      )
     );
 
 
-  if (
-    random < 0.42
-  ) {
+  const maxX =
+    Math.min(
+      mapSize - 1,
+      Math.ceil(
+        continent.x +
+        continent.radiusX +
+        2
+      )
+    );
 
-    return;
 
-  }
+  const minY =
+    Math.max(
+      0,
+      Math.floor(
+        continent.y -
+        continent.radiusY -
+        2
+      )
+    );
 
 
-  const count =
-    random > 0.82
-      ? 3
-      : random > 0.65
-        ? 2
-        : 1;
+  const maxY =
+    Math.min(
+      mapSize - 1,
+      Math.ceil(
+        continent.y +
+        continent.radiusY +
+        2
+      )
+    );
+
+
+  ctx.save();
+
+  ctx.strokeStyle =
+    "rgba(255,255,255,0.10)";
+
+  ctx.lineWidth =
+    2;
 
 
   for (
-    let i = 0;
-    i < count;
-    i++
+    let y = minY;
+    y <= maxY;
+    y++
   ) {
 
-    const rx =
-      seededRandom(
-        x + i * 11,
-        y + i * 17,
-        5
-      );
+    for (
+      let x = minX;
+      x <= maxX;
+      x++
+    ) {
 
-    const ry =
-      seededRandom(
-        x + i * 19,
-        y + i * 7,
-        6
-      );
+      const current =
+        getContinentAt(
+          x,
+          y
+        );
 
 
-    const treeX =
-      px +
-      8 +
-      rx *
-      (tileSize - 16);
+      if (
+        !current ||
+        current.id !==
+        continent.id
+      ) {
+
+        continue;
+
+      }
 
 
-    const treeY =
-      py +
-      10 +
-      ry *
-      (tileSize - 20);
+      const px =
+        x *
+        tileSize;
+
+      const py =
+        y *
+        tileSize;
 
 
-    drawTree(
-      treeX,
-      treeY,
-      0.65 +
-      seededRandom(
-        x,
-        y,
-        i
-      ) *
-      0.45
-    );
+      const right =
+        getContinentAt(
+          x + 1,
+          y
+        );
+
+
+      const bottom =
+        getContinentAt(
+          x,
+          y + 1
+        );
+
+
+      if (
+        !right ||
+        right.id !==
+        continent.id
+      ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          px + tileSize,
+          py
+        );
+
+        ctx.lineTo(
+          px + tileSize,
+          py + tileSize
+        );
+
+        ctx.stroke();
+
+      }
+
+
+      if (
+        !bottom ||
+        bottom.id !==
+        continent.id
+      ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          px,
+          py + tileSize
+        );
+
+        ctx.lineTo(
+          px + tileSize,
+          py + tileSize
+        );
+
+        ctx.stroke();
+
+      }
+
+    }
 
   }
 
-}
 
-
-// ======================================================
-// ÁRBOL
-// ======================================================
-
-function drawTree(
-  x,
-  y,
-  scale
-) {
-
-  const trunkWidth =
-    4 * scale;
-
-  const trunkHeight =
-    9 * scale;
-
-
-  ctx.fillStyle =
-    "#4d3726";
-
-
-  ctx.fillRect(
-    x -
-      trunkWidth / 2,
-    y,
-    trunkWidth,
-    trunkHeight
-  );
-
-
-  ctx.beginPath();
-
-  ctx.arc(
-    x,
-    y - 5 * scale,
-    9 * scale,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fillStyle =
-    "#244b2b";
-
-  ctx.fill();
-
-
-  ctx.beginPath();
-
-  ctx.arc(
-    x - 5 * scale,
-    y - 2 * scale,
-    6 * scale,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fillStyle =
-    "#315d34";
-
-  ctx.fill();
-
-
-  ctx.beginPath();
-
-  ctx.arc(
-    x + 5 * scale,
-    y - 2 * scale,
-    6 * scale,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fillStyle =
-    "#3b6b3a";
-
-  ctx.fill();
+  ctx.restore();
 
 }
 
 
 // ======================================================
-// PIEDRAS
+// CONEXIONES ENTRE CONTINENTES
 // ======================================================
 
-function drawRocks(
-  x,
-  y,
-  px,
-  py
+function drawConnection(
+  continentA,
+  continentB
 ) {
 
-  const random =
-    seededRandom(
-      x + 300,
-      y + 700,
-      8
+  const ax =
+    continentA.x *
+    tileSize;
+
+  const ay =
+    continentA.y *
+    tileSize;
+
+
+  const bx =
+    continentB.x *
+    tileSize;
+
+  const by =
+    continentB.y *
+    tileSize;
+
+
+  const dx =
+    bx - ax;
+
+  const dy =
+    by - ay;
+
+
+  const distance =
+    Math.sqrt(
+      dx * dx +
+      dy * dy
     );
 
 
   if (
-    random < 0.72
+    distance <= 0
   ) {
 
     return;
@@ -751,217 +910,180 @@ function drawRocks(
   }
 
 
-  const rockX =
-    px +
-    seededRandom(
-      x,
-      y,
-      9
+  const nx =
+    dx /
+    distance;
+
+  const ny =
+    dy /
+    distance;
+
+
+  const startDistance =
+    Math.min(
+      continentA.radiusX,
+      continentA.radiusY
     ) *
-    tileSize;
+    tileSize *
+    0.75;
 
 
-  const rockY =
-    py +
-    seededRandom(
-      x,
-      y,
-      10
+  const endDistance =
+    Math.min(
+      continentB.radiusX,
+      continentB.radiusY
     ) *
-    tileSize;
+    tileSize *
+    0.75;
 
 
-  ctx.beginPath();
+  const startX =
+    ax +
+    nx *
+    startDistance;
 
-  ctx.ellipse(
-    rockX,
-    rockY,
-    4,
-    2.5,
-    0,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fillStyle =
-    "rgba(120,125,110,0.65)";
-
-  ctx.fill();
-
-}
+  const startY =
+    ay +
+    ny *
+    startDistance;
 
 
-// ======================================================
-// CAMINOS
-// ======================================================
+  const endX =
+    bx -
+    nx *
+    endDistance;
 
-export function drawRoads(
-  visibleTerritories
-) {
-
-  if (
-    !ctx ||
-    !Array.isArray(
-      visibleTerritories
-    )
-  ) {
-
-    return;
-
-  }
+  const endY =
+    by -
+    ny *
+    endDistance;
 
 
-  const visible =
-    new Set(
-      visibleTerritories.map(
-        territory =>
-          Number(
-            territory.id
-          )
-      )
-    );
+  ctx.save();
 
 
   // Sombra del camino
 
   ctx.strokeStyle =
-    terrainConfig.roadShadow;
+    "rgba(0,0,0,0.35)";
 
   ctx.lineWidth =
-    13;
+    terrainConfig
+      .connection.width +
+    5;
 
   ctx.lineCap =
     "round";
 
 
-  drawRoadLines(
-    visibleTerritories,
-    visible
+  ctx.beginPath();
+
+  ctx.moveTo(
+    startX,
+    startY
   );
 
+  ctx.lineTo(
+    endX,
+    endY
+  );
 
-  // Camino principal
+  ctx.stroke();
+
+
+  // Camino
 
   ctx.strokeStyle =
-    terrainConfig.road;
+    terrainConfig
+      .connection.color;
 
   ctx.lineWidth =
-    8;
+    terrainConfig
+      .connection.width;
 
-  ctx.lineCap =
-    "round";
+  ctx.beginPath();
+
+  ctx.moveTo(
+    startX,
+    startY
+  );
+
+  ctx.lineTo(
+    endX,
+    endY
+  );
+
+  ctx.stroke();
 
 
-  drawRoadLines(
-    visibleTerritories,
-    visible
+  // Borde
+
+  ctx.strokeStyle =
+    terrainConfig
+      .connection.edge;
+
+  ctx.lineWidth =
+    2;
+
+  ctx.setLineDash([
+    8,
+    8
+  ]);
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    startX,
+    startY
+  );
+
+  ctx.lineTo(
+    endX,
+    endY
+  );
+
+  ctx.stroke();
+
+
+  ctx.restore();
+
+}
+
+
+// ======================================================
+// DIBUJAR TODAS LAS CONEXIONES
+// ======================================================
+
+function drawConnections() {
+
+  drawConnection(
+    continents[0],
+    continents[1]
+  );
+
+
+  drawConnection(
+    continents[0],
+    continents[2]
+  );
+
+
+  drawConnection(
+    continents[1],
+    continents[3]
+  );
+
+
+  drawConnection(
+    continents[2],
+    continents[3]
   );
 
 }
 
 
 // ======================================================
-// LÍNEAS DE CAMINOS
-// ======================================================
-
-function drawRoadLines(
-  visibleTerritories,
-  visible
-) {
-
-  for (
-    const territory
-    of visibleTerritories
-  ) {
-
-    const x =
-      territory.x *
-      tileSize +
-      tileSize / 2;
-
-    const y =
-      territory.y *
-      tileSize +
-      tileSize / 2;
-
-
-    // ----------------------------------------------
-    // DERECHA
-    // ----------------------------------------------
-
-    const rightId =
-      Number(
-        territory.id
-      ) + 1;
-
-
-    if (
-      territory.x <
-        mapSize - 1 &&
-      visible.has(
-        rightId
-      )
-    ) {
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        x,
-        y
-      );
-
-      ctx.lineTo(
-        x + tileSize,
-        y
-      );
-
-      ctx.stroke();
-
-    }
-
-
-    // ----------------------------------------------
-    // ABAJO
-    // ----------------------------------------------
-
-    const bottomId =
-      Number(
-        territory.id
-      ) +
-      mapSize;
-
-
-    if (
-      territory.y <
-        mapSize - 1 &&
-      visible.has(
-        bottomId
-      )
-    ) {
-
-      ctx.beginPath();
-
-      ctx.moveTo(
-        x,
-        y
-      );
-
-      ctx.lineTo(
-        x,
-        y + tileSize
-      );
-
-      ctx.stroke();
-
-    }
-
-  }
-
-}
-
-
-// ======================================================
-// TERRENO VISIBLE
+// DIBUJAR TERRENO
 // ======================================================
 
 export function drawTerrain(
@@ -980,94 +1102,73 @@ export function drawTerrain(
   }
 
 
-  const startX =
-    Math.max(
-      0,
-      Math.floor(
-        camera.x /
-        tileSize
-      ) - 2
-    );
+  const width =
+    mapSize *
+    tileSize;
+
+  const height =
+    mapSize *
+    tileSize;
 
 
-  const startY =
-    Math.max(
-      0,
-      Math.floor(
-        camera.y /
-        tileSize
-      ) - 2
-    );
+  // ----------------------------------------------
+  // OCÉANO
+  // ----------------------------------------------
+
+  drawOcean(
+    width,
+    height
+  );
 
 
-  const visibleWidth =
-    canvas.width /
-    camera.zoom;
-
-
-  const visibleHeight =
-    canvas.height /
-    camera.zoom;
-
-
-  const endX =
-    Math.min(
-      mapSize - 1,
-      Math.ceil(
-        (
-          camera.x +
-          visibleWidth
-        ) /
-        tileSize
-      ) + 2
-    );
-
-
-  const endY =
-    Math.min(
-      mapSize - 1,
-      Math.ceil(
-        (
-          camera.y +
-          visibleHeight
-        ) /
-        tileSize
-      ) + 2
-    );
-
-
-  // ==================================================
-  // TERRENO
-  // ==================================================
+  // ----------------------------------------------
+  // CONTINENTES
+  // ----------------------------------------------
 
   for (
-    let y = startY;
-    y <= endY;
-    y++
+    const continent
+    of continents
   ) {
 
-    for (
-      let x = startX;
-      x <= endX;
-      x++
-    ) {
-
-      drawTile(
-        x,
-        y
-      );
-
-    }
+    drawContinent(
+      continent
+    );
 
   }
 
 
-  // ==================================================
-  // CAMINOS
-  // ==================================================
+  // ----------------------------------------------
+  // BORDES
+  // ----------------------------------------------
 
-  drawRoads(
-    visibleTerritories
+  for (
+    const continent
+    of continents
+  ) {
+
+    drawContinentEdges(
+      continent
+    );
+
+  }
+
+
+  // ----------------------------------------------
+  // CONEXIONES
+  // ----------------------------------------------
+
+  drawConnections();
+
+
+  // ----------------------------------------------
+  // DETALLES DEL OCÉANO
+  // ----------------------------------------------
+
+  drawOceanDetails(
+    0,
+    0,
+    mapSize,
+    mapSize
   );
 
 }
@@ -1080,9 +1181,7 @@ export function drawTerrain(
 export function drawMapBorder() {
 
   if (!ctx) {
-
     return;
-
   }
 
 
@@ -1091,11 +1190,14 @@ export function drawMapBorder() {
     tileSize;
 
 
+  ctx.save();
+
+
   ctx.strokeStyle =
-    terrainConfig.mapBorder;
+    "rgba(125,220,235,0.35)";
 
   ctx.lineWidth =
-    8;
+    10;
 
 
   ctx.strokeRect(
@@ -1104,6 +1206,9 @@ export function drawMapBorder() {
     size,
     size
   );
+
+
+  ctx.restore();
 
 }
 
@@ -1148,12 +1253,35 @@ export function setTileSize(
 
 
 // ======================================================
-// TAMAÑO DEL MAPA
+// OBTENER CONTINENTES
 // ======================================================
 
-export function getMapSize() {
+export function getContinents() {
 
-  return mapSize;
+  return continents.map(
+    continent => ({
+      ...continent
+    })
+  );
+
+}
+
+
+// ======================================================
+// OBTENER CONTINENTE POR ID
+// ======================================================
+
+export function getContinentById(
+  id
+) {
+
+  return (
+    continents.find(
+      continent =>
+        continent.id === id
+    ) ||
+    null
+  );
 
 }
 
@@ -1170,14 +1298,14 @@ export default {
 
   drawTerrain,
 
-  drawRoads,
-
   drawMapBorder,
 
   getTileSize,
 
   setTileSize,
 
-  getMapSize
+  getContinents,
+
+  getContinentById
 
 };
